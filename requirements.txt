@@ -1,0 +1,36 @@
+# Aegis: Real-Time Macro Defense
+# Python dependencies
+
+# Data fetching
+fredapi==0.5.1              # FRED API client
+yfinance==0.2.36            # Yahoo Finance market data
+requests==2.31.0            # HTTP requests for Shiller data
+beautifulsoup4==4.12.3      # HTML parsing for web scraping
+
+# Data processing
+pandas==2.2.0               # Time series data manipulation
+numpy==1.26.3               # Numerical computing
+
+# Configuration
+pyyaml==6.0.1               # YAML config parsing
+python-dotenv==1.0.1        # Environment variable management
+
+# Alerting
+sendgrid==6.11.0            # Email delivery (or use smtplib for free Gmail)
+
+# Dashboard (optional)
+flask==3.0.1                # Web framework
+plotly==5.18.0              # Interactive charts
+dash==2.14.2                # Dashboard framework (alternative to Flask)
+
+# Testing
+pytest==7.4.4               # Unit testing
+pytest-cov==4.1.0           # Test coverage
+
+# Utilities
+python-dateutil==2.8.2      # Date handling
+pytz==2024.1                # Timezone support
+schedule==1.2.1             # Job scheduling (alternative to cron)
+
+# Logging
+colorlog==6.8.2             # Colored console logging

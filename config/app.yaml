@@ -1,0 +1,64 @@
+# Aegis Application Configuration
+
+app:
+  name: "Aegis"
+  version: "0.1.0"
+  description: "Real-Time Macro Defense System"
+
+# Risk scoring configuration
+scoring:
+  # Dimension weights (must sum to 1.0)
+  weights:
+    recession: 0.30
+    credit: 0.25
+    valuation: 0.20
+    liquidity: 0.15
+    geopolitical: 0.10
+
+  # Historical lookback for trend analysis (weeks)
+  trend_window: 4
+
+# Alert configuration
+alerts:
+  # Risk score thresholds (0-10 scale)
+  red_threshold: 8.0      # Severe risk
+  yellow_threshold: 6.5   # Elevated risk
+
+  # Trigger conditions
+  rapid_rise_threshold: 1.0  # Point increase over trend_window that triggers alert
+  multi_dimension_threshold: 8.0  # If 2+ dimensions exceed this, trigger alert
+  multi_dimension_count: 2
+
+  # Alert cooldown (days) - avoid spam
+  cooldown_days: 7
+
+  # Email settings
+  email_enabled: true
+  email_subject_prefix: "⚠️ Aegis Alert:"
+
+# Data fetching
+data:
+  # Update frequency
+  daily_update_enabled: true
+  update_hour: 18  # 6 PM local time
+
+  # Data retention (days)
+  history_retention: 1825  # 5 years
+
+  # Cache settings
+  cache_enabled: true
+  cache_ttl_hours: 24
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/aegis.log"
+  console: true
+
+# Dashboard (optional)
+dashboard:
+  enabled: false
+  host: "127.0.0.1"
+  port: 5000
+  debug: false

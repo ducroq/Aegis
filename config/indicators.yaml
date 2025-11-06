@@ -1,0 +1,227 @@
+# Aegis Indicator Configuration
+# Defines which economic indicators to track and how to score them
+
+recession_indicators:
+  description: "Leading indicators of economic recession"
+
+  yield_curve:
+    source: "FRED"
+    series_id: "T10Y2Y"
+    name: "10-Year minus 2-Year Treasury Spread"
+    update_frequency: "daily"
+    scoring:
+      # Yield curve inversion is a strong recession signal
+      deep_inversion: -0.50  # Below this = high recession risk (score +4)
+      shallow_inversion: 0.00  # Below this = moderate risk (score +2)
+      normal: 0.50  # Above this = low risk (score 0)
+
+  unemployment_rate:
+    source: "FRED"
+    series_id: "UNRATE"
+    name: "Unemployment Rate"
+    update_frequency: "monthly"
+    scoring:
+      # Rising unemployment signals recession
+      rapid_rise: 0.30  # 3-month increase (percentage points) triggers high score
+      moderate_rise: 0.10
+
+  ism_manufacturing:
+    source: "ISM"
+    series_id: "MANEMP"  # Or use FRED: "NAPM"
+    name: "ISM Manufacturing PMI"
+    update_frequency: "monthly"
+    scoring:
+      # Below 50 = contraction
+      deep_contraction: 45
+      contraction: 50
+      expansion: 50
+
+  consumer_confidence:
+    source: "FRED"
+    series_id: "UMCSENT"  # University of Michigan Consumer Sentiment
+    name: "Consumer Confidence Index"
+    update_frequency: "monthly"
+    scoring:
+      low: 90
+      normal: 100
+
+credit_indicators:
+  description: "Credit market stress and risk appetite"
+
+  high_yield_spreads:
+    source: "FRED"
+    series_id: "BAMLH0A0HYM2"
+    name: "ICE BofA US High Yield Option-Adjusted Spread"
+    update_frequency: "daily"
+    scoring:
+      # Wider spreads = higher credit stress
+      extreme_stress: 8.0  # Percentage points over Treasuries
+      high_stress: 6.0
+      elevated: 4.0
+      normal: 3.0
+
+  investment_grade_spreads:
+    source: "FRED"
+    series_id: "BAMLC0A4CBBB"
+    name: "ICE BofA BBB US Corporate Bond Spread"
+    update_frequency: "daily"
+    scoring:
+      extreme: 4.0
+      elevated: 2.5
+      normal: 1.5
+
+  bank_lending_standards:
+    source: "FRED"
+    series_id: "DRTSCILM"  # Senior Loan Officer Survey
+    name: "Net Percentage of Banks Tightening Standards"
+    update_frequency: "quarterly"
+    scoring:
+      # Positive = tightening (bad), Negative = easing (good)
+      severe_tightening: 30
+      moderate_tightening: 15
+
+  ted_spread:
+    source: "FRED"
+    series_id: "TEDRATE"
+    name: "TED Spread (3-Month LIBOR - 3-Month T-Bill)"
+    update_frequency: "daily"
+    scoring:
+      crisis: 2.0  # 2008 crisis levels
+      stress: 1.0
+      normal: 0.5
+
+valuation_indicators:
+  description: "Market valuation extremes"
+
+  shiller_cape:
+    source: "SHILLER"
+    url: "http://www.econ.yale.edu/~shiller/data/ie_data.xls"
+    name: "Shiller Cyclically Adjusted PE Ratio"
+    update_frequency: "monthly"
+    scoring:
+      # Historical average ~16-17
+      extreme_bubble: 35  # Dot-com levels
+      elevated: 30
+      high: 25
+      normal: 20
+      attractive: 15
+
+  buffett_indicator:
+    source: "CALCULATED"
+    numerator: "FRED:WILSHIRE5000IND"  # Total market cap proxy
+    denominator: "FRED:GDP"
+    name: "Market Cap to GDP Ratio (Buffett Indicator)"
+    update_frequency: "quarterly"
+    scoring:
+      # Buffett: >100% is overvalued
+      extreme: 200
+      very_high: 150
+      elevated: 120
+      fair: 100
+      attractive: 80
+
+  forward_pe:
+    source: "YAHOO"
+    ticker: "^GSPC"  # S&P 500
+    name: "S&P 500 Forward P/E Ratio"
+    update_frequency: "daily"
+    scoring:
+      extreme: 25
+      elevated: 22
+      historical_avg: 18
+      attractive: 15
+
+liquidity_indicators:
+  description: "Monetary policy and liquidity conditions"
+
+  fed_funds_rate:
+    source: "FRED"
+    series_id: "DFF"
+    name: "Federal Funds Effective Rate"
+    update_frequency: "daily"
+    scoring:
+      # High rates = tight policy (risk), low rates = loose (supportive)
+      # Score based on rate of change, not absolute level
+      rapid_tightening: 2.0  # Percentage point increase in 6 months
+      tightening: 1.0
+
+  m2_money_supply:
+    source: "FRED"
+    series_id: "M2SL"
+    name: "M2 Money Supply"
+    update_frequency: "weekly"
+    scoring:
+      # Year-over-year growth rate
+      contraction: 0  # Negative growth = high risk
+      low_growth: 2  # <2% YoY
+      normal: 6  # 4-8% YoY
+
+  margin_debt:
+    source: "FINRA"
+    series_id: "MARGIN_DEBT"
+    name: "NYSE Margin Debt"
+    update_frequency: "monthly"
+    scoring:
+      # As percentage of market cap or YoY change
+      extreme_speculation: 3.0  # Percent of GDP
+      elevated: 2.5
+
+  fed_balance_sheet:
+    source: "FRED"
+    series_id: "WALCL"
+    name: "Federal Reserve Total Assets"
+    update_frequency: "weekly"
+    scoring:
+      # QT (quantitative tightening) = risk
+      rapid_qt: -500  # Billion USD per quarter
+      qt: -200
+
+geopolitical_indicators:
+  description: "Geopolitical risks and shocks"
+
+  policy_uncertainty:
+    source: "FRED"
+    series_id: "USEPUINDXD"
+    name: "Economic Policy Uncertainty Index"
+    update_frequency: "daily"
+    scoring:
+      extreme: 300
+      elevated: 200
+      normal: 100
+
+  oil_price_shock:
+    source: "FRED"
+    series_id: "DCOILWTICO"
+    name: "WTI Crude Oil Price"
+    update_frequency: "daily"
+    scoring:
+      # Rapid price increases = supply shock
+      extreme_spike: 50  # Percent increase in 3 months
+      spike: 30
+
+  vix:
+    source: "YAHOO"
+    ticker: "^VIX"
+    name: "CBOE Volatility Index"
+    update_frequency: "daily"
+    scoring:
+      # VIX as fear gauge
+      panic: 40
+      fear: 30
+      elevated: 20
+      complacent: 12
+
+# Data sources configuration
+data_sources:
+  fred:
+    base_url: "https://api.stlouisfed.org/fred/series/observations"
+    rate_limit: null  # No official limit, be reasonable
+
+  yahoo:
+    library: "yfinance"
+    rate_limit: null
+
+  shiller:
+    url: "http://www.econ.yale.edu/~shiller/data/ie_data.xls"
+    update_day: 1  # First of month
+    cache_days: 30
