@@ -32,19 +32,24 @@ Alert Logic (threshold + trend analysis)
 Notifications (email) + History (time series)
 ```
 
-## Risk Dimensions
+## Risk Dimensions (Quantitative Core)
 
-### 1. Recession Risk (30% weight)
-- Yield curve inversion (10Y-2Y spread)
-- Unemployment trends
-- ISM Manufacturing PMI
+### 1. Recession Risk (30% weight) **ENHANCED**
+- **Unemployment Claims VELOCITY** (YoY % change) - Leading indicator
+- **ISM PMI Regime Cross** (expansion → contraction detection)
+- **Dual Yield Curve**: Traditional 10Y-2Y + Near-term forward spread (3M→18M)
 - Consumer confidence
 
-### 2. Credit Stress (25% weight)
-- High-yield credit spreads
+**Key Enhancement**: Rate of change > absolute values. Velocity signals catch regime shifts earlier.
+
+### 2. Credit Stress (25% weight) **ENHANCED**
+- **High-yield spread VELOCITY** (70% weight) - Immediate stress signal
+- High-yield spread LEVEL (30% weight)
 - Investment-grade spreads
 - Bank lending standards
-- Commercial real estate concerns
+- TED spread (LIBOR-Treasury)
+
+**Key Enhancement**: Spreads widening rapidly = funding crisis, even if levels not extreme yet.
 
 ### 3. Valuation Extremes (20% weight)
 - Shiller CAPE ratio
@@ -52,16 +57,30 @@ Notifications (email) + History (time series)
 - Forward P/E relative to history
 
 ### 4. Liquidity Conditions (15% weight)
-- Fed funds rate trajectory
-- M2 money supply growth
+- Fed funds rate trajectory (rate of change)
+- M2 money supply growth (YoY velocity)
 - Margin debt levels
 - Fed balance sheet changes
 
-### 5. Geopolitical Risk (10% weight)
-- Policy uncertainty index
-- Commodity price shocks
-- Supply chain disruptions
-- Major conflict escalation
+### 5. Positioning & Speculation (10% weight) **NEW**
+- **CFTC S&P 500 net speculative positioning** (contrarian signal)
+- **CFTC Treasury positioning** (crowded shorts = squeeze risk)
+- VIX futures positioning (complacency gauge)
+
+**Key Enhancement**: Extreme positioning often precedes violent reversals.
+
+## Qualitative Overlay (Regime Shifts) **NEW**
+
+Data-first architecture, but news can detect Black Swan events. **Fixed, rule-based adjustments**:
+
+| Event Category | Score | Examples |
+|---------------|-------|----------|
+| **Financial Contagion** | +3.0 | Lehman (2008), SVB (2023) |
+| **Geopolitical Shock** | +2.0 | Ukraine war (2022), COVID (2020) |
+| **Policy Reversal** | +1.5 | Emergency Fed cuts (2020), TARP (2008) |
+| **Expert Capitulation** | +1.0 | Grantham bubble calls (2000, 2007, 2021) |
+
+**Auditability**: Every adjustment logged with evidence, source, timestamp.
 
 ## Alert Tiers
 

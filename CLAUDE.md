@@ -30,13 +30,31 @@ Alert Logic (threshold checking)
 Email Alert + History Storage
 ```
 
-### Risk Dimensions (5 total, weights sum to 1.0)
+### Risk Dimensions (5 total, weights sum to 1.0) - ENHANCED
 
-1. **Recession Risk** (0.30): Yield curve, unemployment, PMI, consumer confidence
-2. **Credit Stress** (0.25): High-yield spreads, bank lending, commercial real estate
-3. **Valuation Extremes** (0.20): CAPE ratio, Buffett indicator, forward P/E
-4. **Liquidity Conditions** (0.15): Fed funds, M2 growth, margin debt
-5. **Geopolitical Risk** (0.10): Policy uncertainty, conflicts, supply shocks
+1. **Recession Risk** (0.30):
+   - Unemployment claims VELOCITY (YoY % change) - leading indicator
+   - ISM PMI regime cross detection (expansion → contraction)
+   - Dual yield curve (10Y-2Y + 3M→18M forward spread)
+
+2. **Credit Stress** (0.25):
+   - High-yield spread VELOCITY (70% weight) + level (30%)
+   - Investment-grade spreads
+   - Bank lending standards
+   - TED spread
+
+3. **Valuation Extremes** (0.20):
+   - CAPE ratio, Buffett indicator, forward P/E
+
+4. **Liquidity Conditions** (0.15):
+   - Fed funds rate of change, M2 velocity, margin debt
+
+5. **Positioning & Speculation** (0.10): **NEW**
+   - CFTC S&P 500 net speculative positioning (contrarian)
+   - CFTC Treasury positioning (squeeze risk)
+   - VIX futures positioning (complacency)
+
+**Key Philosophy**: Rate of change > absolute values for leading signals.
 
 Each dimension scored 0-10, then weighted average = overall risk score.
 

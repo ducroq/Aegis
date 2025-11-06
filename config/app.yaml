@@ -13,10 +13,17 @@ scoring:
     credit: 0.25
     valuation: 0.20
     liquidity: 0.15
-    geopolitical: 0.10
+    positioning: 0.10  # UPDATED: Changed from geopolitical to positioning (CFTC data)
 
   # Historical lookback for trend analysis (weeks)
   trend_window: 4
+
+  # ENHANCEMENT: Qualitative regime shift overlay
+  regime_shifts:
+    enabled: true
+    news_sources_config: "config/regime_shifts.yaml"
+    max_adjustment: 3.0  # Cap qualitative adjustment
+    lookback_days: 7  # Scan past week for events
 
 # Alert configuration
 alerts:

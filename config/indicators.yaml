@@ -2,39 +2,70 @@
 # Defines which economic indicators to track and how to score them
 
 recession_indicators:
-  description: "Leading indicators of economic recession"
+  description: "Leading indicators of economic recession (ENHANCED: Rate of change emphasis)"
 
-  yield_curve:
+  # ENHANCEMENT: Unemployment Claims VELOCITY (more leading than unemployment rate)
+  unemployment_claims_velocity:
+    source: "FRED"
+    series_id: "ICSA"
+    name: "Initial Unemployment Claims - 4-Week Average YoY Change"
+    update_frequency: "weekly"
+    calculation: "4wk_moving_avg_yoy_pct_change"
+    scoring:
+      # Velocity scoring (leading indicator)
+      extreme_spike: 0.15  # 15% YoY increase = score +4.0
+      moderate_spike: 0.08  # 8% YoY increase = score +2.0
+      rising: 0.03  # 3% YoY increase = score +1.0
+      stable: 0.0
+    weight: 0.40  # Heavy weight due to leading nature
+
+  # ENHANCEMENT: PMI REGIME CROSS detection (expansion → contraction)
+  ism_pmi_regime:
+    source: "FRED"
+    series_id: "NAPM"
+    name: "ISM Manufacturing PMI (Diffusion Index)"
+    update_frequency: "monthly"
+    scoring:
+      # Critical signal: cross from expansion to contraction
+      cross_into_contraction: 50  # Triggers +3.0 if previous >= 50 and current < 50
+      deep_contraction: 45  # Below 45 = score +2.5
+      shallow_contraction: 50  # Below 50 = score +1.5
+      slowing_expansion: 52  # Below 52 (warning) = score +1.0
+      healthy_expansion: 52  # Above 52 = score 0
+    weight: 0.30  # High weight for regime shift
+
+  # ENHANCEMENT: Dual yield curve monitoring
+  yield_curve_traditional:
     source: "FRED"
     series_id: "T10Y2Y"
     name: "10-Year minus 2-Year Treasury Spread"
     update_frequency: "daily"
     scoring:
-      # Yield curve inversion is a strong recession signal
-      deep_inversion: -0.50  # Below this = high recession risk (score +4)
-      shallow_inversion: 0.00  # Below this = moderate risk (score +2)
-      normal: 0.50  # Above this = low risk (score 0)
+      deep_inversion: -0.50  # Score +3.0
+      shallow_inversion: 0.00  # Score +1.5
+      normal: 0.50
+    weight: 0.15
 
-  unemployment_rate:
-    source: "FRED"
-    series_id: "UNRATE"
-    name: "Unemployment Rate"
-    update_frequency: "monthly"
+  # ENHANCEMENT: Near-term forward spread (NY Fed research)
+  yield_curve_forward:
+    source: "CALCULATED"
+    calculation: "fed_funds_futures_18m - tbill_3m"
+    name: "3-Month to 18-Month Forward Spread"
+    update_frequency: "daily"
+    data_sources:
+      futures: "CME_FED_FUNDS_FUTURES"
+      tbill: "FRED:DTB3"
     scoring:
-      # Rising unemployment signals recession
-      rapid_rise: 0.30  # 3-month increase (percentage points) triggers high score
-      moderate_rise: 0.10
+      deep_inversion: -0.30  # Score +2.0
+      shallow_inversion: 0.00  # Score +1.0
+      normal: 0.30
+    weight: 0.15
+    note: "Often inverts BEFORE traditional 10Y-2Y, providing earlier warning"
 
-  ism_manufacturing:
-    source: "ISM"
-    series_id: "MANEMP"  # Or use FRED: "NAPM"
-    name: "ISM Manufacturing PMI"
-    update_frequency: "monthly"
-    scoring:
-      # Below 50 = contraction
-      deep_contraction: 45
-      contraction: 50
-      expansion: 50
+  # Bonus for both curves inverted
+  dual_inversion_bonus:
+    condition: "both_curves_inverted"
+    score_adjustment: 1.0
 
   consumer_confidence:
     source: "FRED"
@@ -46,19 +77,31 @@ recession_indicators:
       normal: 100
 
 credit_indicators:
-  description: "Credit market stress and risk appetite"
+  description: "Credit market stress and risk appetite (ENHANCED: Velocity emphasis)"
 
-  high_yield_spreads:
+  # ENHANCEMENT: High-yield spread VELOCITY (rate of change > level)
+  high_yield_velocity:
     source: "FRED"
     series_id: "BAMLH0A0HYM2"
-    name: "ICE BofA US High Yield Option-Adjusted Spread"
+    name: "ICE BofA US High Yield OAS - Rate of Change"
     update_frequency: "daily"
+    calculations:
+      velocity: "20day_rate_of_change"  # Daily bps change over 20 trading days
+      level: "current_value"
     scoring:
-      # Wider spreads = higher credit stress
-      extreme_stress: 8.0  # Percentage points over Treasuries
-      high_stress: 6.0
-      elevated: 4.0
-      normal: 3.0
+      # Velocity scoring (immediate liquidity/funding crisis signal)
+      rapid_widening: 0.1  # 10 bps/day widening = score +4.0
+      moderate_widening: 0.05  # 5 bps/day = score +2.0
+      stable: 0.02
+      # Level scoring (absolute threshold)
+      extreme_level: 8.0  # Score +3.0
+      high_level: 6.0  # Score +2.0
+      elevated_level: 4.0  # Score +1.0
+      normal_level: 3.0
+    weighting:
+      velocity: 0.7  # Weight velocity MORE than level
+      level: 0.3
+    note: "Spreads widening rapidly = immediate stress, even if levels not extreme yet"
 
   investment_grade_spreads:
     source: "FRED"
@@ -210,6 +253,49 @@ geopolitical_indicators:
       fear: 30
       elevated: 20
       complacent: 12
+
+# ENHANCEMENT: Positioning & Speculation Indicators
+positioning_indicators:
+  description: "CFTC Commitments of Traders - Extreme positioning signals"
+
+  sp500_speculative_positioning:
+    source: "CFTC"
+    report: "Commitments of Traders"
+    contract: "S&P 500 (CME)"
+    name: "S&P 500 Net Speculative Position"
+    update_frequency: "weekly"
+    calculation: "net_speculative_percentile_2y"  # (Long - Short) / Open Interest, percentile vs 2-year history
+    scoring:
+      # Extreme positioning = contrarian signal
+      extreme_long: 95  # 95th percentile = complacency, score +2.0 (risk of reversal)
+      elevated_long: 85  # 85th percentile = score +1.0
+      neutral: 50
+      extreme_short: 5  # 5th percentile = capitulation, score -1.0 (contrarian opportunity)
+    note: "Extreme net long = crowded trade, reversal risk. Extreme short = potential bottom."
+
+  treasury_speculative_positioning:
+    source: "CFTC"
+    report: "Commitments of Traders"
+    contract: "10-Year Treasury Note (CBOT)"
+    name: "Treasury Net Speculative Position"
+    update_frequency: "weekly"
+    calculation: "net_speculative_percentile_2y"
+    scoring:
+      extreme_short: 5  # Crowded short = squeeze/funding risk, score +1.5
+      elevated_short: 15  # Score +0.5
+      neutral: 50
+    note: "Extreme shorts in Treasuries = potential short squeeze risk during flight-to-quality"
+
+  vix_futures_positioning:
+    source: "CFTC"
+    contract: "VIX Futures"
+    name: "VIX Futures Net Non-Commercial Position"
+    update_frequency: "weekly"
+    calculation: "net_noncommercial_position"
+    scoring:
+      extreme_short_vix: -10000  # Contracts, complacency signal
+      moderate_short_vix: -5000
+    note: "Net short VIX futures = complacency, potential for volatility spike"
 
 # Data sources configuration
 data_sources:

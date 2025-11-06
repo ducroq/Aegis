@@ -1,0 +1,380 @@
+# Aegis Qualitative Regime Shift Configuration
+# Fixed scoring rules for LLM-detected structural events
+
+regime_shift_categories:
+
+  financial_contagion:
+    score: 3.0
+    severity: "MAJOR_SHOCK"
+    description: "Bank runs, systemic stress, credit crunches, emergency lending"
+
+    keywords:
+      - "bank run"
+      - "bank failure"
+      - "systemic stress"
+      - "credit crunch"
+      - "liquidity freeze"
+      - "emergency lending facility"
+      - "FDIC seizure"
+      - "bailout"
+      - "counterparty risk"
+      - "repo market freeze"
+      - "margin call cascade"
+      - "prime broker failure"
+
+    historical_examples:
+      - event: "Lehman Brothers bankruptcy"
+        date: "2008-09-15"
+        impact: "Triggered global financial crisis"
+
+      - event: "Silicon Valley Bank collapse"
+        date: "2023-03-10"
+        impact: "$42B deposit run, regional banking stress"
+
+      - event: "Bear Stearns hedge funds collapse"
+        date: "2007-07-31"
+        impact: "First major casualty of subprime crisis"
+
+      - event: "Long-Term Capital Management rescue"
+        date: "1998-09-23"
+        impact: "Fed-orchestrated $3.6B bailout"
+
+    detection_prompt: |
+      Look for explicit mentions of:
+      - Bank seizures or failures
+      - Emergency central bank actions (discount window, emergency facilities)
+      - Systemic counterparty concerns
+      - Liquidity freezes in critical markets (repo, commercial paper)
+      - Cascading margin calls or forced liquidations
+
+      ONLY trigger if event is CURRENT (within past 7 days) and SIGNIFICANT (affects systemically important institutions).
+
+  geopolitical_shock:
+    score: 2.0
+    severity: "STRUCTURAL_BREAK"
+    description: "Wars, embargoes, sanctions, supply chain blockades, pandemics"
+
+    keywords:
+      - "invasion"
+      - "war"
+      - "military conflict"
+      - "embargo"
+      - "sanctions"
+      - "supply chain blockade"
+      - "OPEC production cut"
+      - "OPEC surprise"
+      - "pandemic lockdown"
+      - "border closure"
+      - "strategic reserve release"
+      - "energy crisis"
+      - "food shortage"
+
+    historical_examples:
+      - event: "Russia invades Ukraine"
+        date: "2022-02-24"
+        impact: "Energy/food supply shocks, massive sanctions"
+
+      - event: "COVID-19 pandemic lockdowns"
+        date: "2020-03-11"
+        impact: "Global supply chain collapse, demand shock"
+
+      - event: "Gulf War / Oil shock"
+        date: "1990-08-02"
+        impact: "Oil prices doubled, recession fears"
+
+      - event: "9/11 terrorist attacks"
+        date: "2001-09-11"
+        impact: "Market closure, flight to safety"
+
+      - event: "OPEC oil embargo"
+        date: "1973-10-17"
+        impact: "Quadrupled oil prices, stagflation"
+
+    detection_prompt: |
+      Look for:
+      - Military invasions or major escalations
+      - Sudden supply chain disruptions (energy, food, semiconductors)
+      - Major sanctions or trade embargoes
+      - Pandemic lockdowns or border closures
+      - Strategic resource supply shocks
+
+      ONLY trigger if event has GLOBAL or MAJOR ECONOMY impact (not localized conflicts).
+
+  policy_reversal:
+    score: 1.5
+    severity: "REGIME_SHIFT"
+    description: "Emergency rate changes, abandoned targets, unprecedented fiscal/monetary policy"
+
+    keywords:
+      - "emergency rate cut"
+      - "emergency rate hike"
+      - "inter-meeting rate change"
+      - "abandoned inflation target"
+      - "yield curve control"
+      - "unprecedented fiscal spending"
+      - "TARP"
+      - "quantitative easing"
+      - "quantitative tightening reversal"
+      - "emergency Fed meeting"
+      - "policy panic"
+      - "loss of credibility"
+      - "currency intervention"
+
+    historical_examples:
+      - event: "Fed emergency 50bps cut (COVID)"
+        date: "2020-03-03"
+        impact: "Unscheduled cut, followed by 100bps cut and QE restart"
+
+      - event: "TARP bailout announcement"
+        date: "2008-10-03"
+        impact: "$700B emergency financial sector rescue"
+
+      - event: "UK Gilt crisis / BoE intervention"
+        date: "2022-09-28"
+        impact: "Emergency QE restart to prevent pension fund collapse"
+
+      - event: "Plaza Accord"
+        date: "1985-09-22"
+        impact: "Coordinated currency intervention"
+
+      - event: "Fed emergency 75bps cut"
+        date: "2008-01-22"
+        impact: "Between-meetings cut, panic signal"
+
+    detection_prompt: |
+      Look for:
+      - Unscheduled/emergency central bank meetings
+      - Inter-meeting rate changes (outside normal schedule)
+      - Reversals of stated policy (e.g., pivoting from tightening to easing suddenly)
+      - Unprecedented fiscal programs (multi-trillion dollar scale)
+      - Emergency lending facilities or bailouts
+      - Explicit abandonment of policy targets
+
+      ONLY trigger if action is EMERGENCY in nature (not routine policy adjustments).
+
+  expert_capitulation:
+    score: 1.0
+    severity: "SENTIMENT_CHECK"
+    description: "High-credibility experts declare bubble/bear market/top"
+
+    qualified_experts:
+      - name: "Jeremy Grantham"
+        affiliation: "GMO (Grantham, Mayo, Van Otterloo)"
+        credibility: "Called dot-com bubble (2000), housing bubble (2007)"
+        keywords: ["Grantham", "GMO quarterly"]
+
+      - name: "John Hussman"
+        affiliation: "Hussman Strategic Advisors"
+        credibility: "Called 2000 and 2008 crashes (though early)"
+        keywords: ["Hussman", "Hussman Strategic"]
+
+      - name: "Jeffrey Gundlach"
+        affiliation: "DoubleLine Capital"
+        credibility: "Bond market expert, prescient macro calls"
+        keywords: ["Gundlach", "DoubleLine", "Bond King"]
+
+      - name: "Ray Dalio"
+        affiliation: "Bridgewater Associates"
+        credibility: "Largest hedge fund, macro expertise"
+        keywords: ["Dalio", "Bridgewater"]
+
+      - name: "Warren Buffett"
+        affiliation: "Berkshire Hathaway"
+        credibility: "Track record spanning decades"
+        keywords: ["Buffett", "Berkshire"]
+
+      - name: "Stanley Druckenmiller"
+        affiliation: "Duquesne Capital"
+        credibility: "Legendary macro investor"
+        keywords: ["Druckenmiller"]
+
+    trigger_phrases:
+      - "bubble territory"
+      - "unsustainable valuation"
+      - "extreme overvaluation"
+      - "top of the market"
+      - "bear market ahead"
+      - "major correction coming"
+      - "untenable levels"
+      - "euphoria peak"
+
+    historical_examples:
+      - expert: "Jeremy Grantham"
+        date: "2021-01-05"
+        statement: "This is an epic bubble"
+        outcome: "S&P 500 peaked Jan 2022, -25% over next year"
+
+      - expert: "Jeremy Grantham"
+        date: "2007-09-01"
+        statement: "First truly global bubble"
+        outcome: "Market peaked Oct 2007, -57% over 18 months"
+
+      - expert: "Warren Buffett"
+        date: "1999-11-01"
+        statement: "Market cap to GNP ratio is best valuation indicator"
+        outcome: "Dot-com crash began March 2000"
+
+    detection_prompt: |
+      Look for:
+      - Explicit statements from qualified experts (see list above)
+      - Direct declarations of bubble/bear market/top
+      - NOT routine bearish commentary, but CAPITULATION or extreme warnings
+      - Must include specific bear case (not vague concern)
+
+      ONLY trigger if:
+      1. Expert is on qualified list
+      2. Statement is explicit and strong (not hedged)
+      3. Represents change in stance OR repeated extreme warning
+
+# LLM Prompt Template
+llm_detection_prompt_template: |
+  You are analyzing financial news articles to detect QUALITATIVE REGIME SHIFTS that require fixed risk score adjustments.
+
+  **Your task**: Identify if ANY of these 4 event categories occurred in the past 7 days based on the provided articles.
+
+  ## Event Categories
+
+  ### 1. FINANCIAL CONTAGION (+3.0 points)
+  {financial_contagion.description}
+  Keywords: {financial_contagion.keywords}
+
+  ### 2. GEOPOLITICAL SHOCK (+2.0 points)
+  {geopolitical_shock.description}
+  Keywords: {geopolitical_shock.keywords}
+
+  ### 3. POLICY REVERSAL (+1.5 points)
+  {policy_reversal.description}
+  Keywords: {policy_reversal.keywords}
+
+  ### 4. EXPERT CAPITULATION (+1.0 points)
+  {expert_capitulation.description}
+  Qualified experts: {expert_capitulation.qualified_experts}
+  Trigger phrases: {expert_capitulation.trigger_phrases}
+
+  ## Detection Guidelines
+
+  - Be CONSERVATIVE: Only trigger if event is CLEAR and SIGNIFICANT
+  - Require CURRENT events (past 7 days, not historical references)
+  - Require EXPLICIT evidence (direct quotes, specific events)
+  - ONE event per category maximum (no double-counting)
+  - EXPLAIN your reasoning with specific article quotes
+
+  ## Output Format (JSON)
+
+  {{
+    "financial_contagion": {{
+      "detected": true/false,
+      "score": 3.0 or 0.0,
+      "evidence": "Specific quote from article",
+      "source": "Article title and source",
+      "date": "YYYY-MM-DD",
+      "confidence": "HIGH/MEDIUM/LOW",
+      "reasoning": "Why this qualifies"
+    }},
+    "geopolitical_shock": {{ ... }},
+    "policy_reversal": {{ ... }},
+    "expert_capitulation": {{ ... }},
+    "total_adjustment": (sum of detected scores),
+    "overall_confidence": "HIGH/MEDIUM/LOW",
+    "summary": "Brief explanation of detected events"
+  }}
+
+  ## Articles to Analyze
+
+  {articles}
+
+# Auditability & Logging
+audit_log_format:
+  required_fields:
+    - timestamp
+    - event_category
+    - score_adjustment
+    - detected_from_article
+    - evidence_quote
+    - source
+    - confidence_level
+    - llm_reasoning
+    - quantitative_score_before
+    - quantitative_score_after
+    - final_score
+    - alert_triggered
+
+  storage: "data/history/regime_shifts.jsonl"
+
+  example_entry:
+    timestamp: "2023-03-10T14:32:00Z"
+    event_category: "financial_contagion"
+    score_adjustment: 3.0
+    detected_from_article: "Federal Reserve announces emergency lending facility for banks"
+    evidence_quote: "Silicon Valley Bank seized by FDIC after $42 billion deposit run in 48 hours"
+    source: "Federal Reserve Press Release / Wall Street Journal"
+    confidence_level: "HIGH"
+    llm_reasoning: "Clear bank failure with systemic implications, emergency Fed action, matches 'bank run' and 'FDIC seizure' keywords"
+    quantitative_score_before: 6.2
+    quantitative_score_after: 6.2
+    regime_adjustment: 3.0
+    final_score: 9.2
+    alert_triggered: true
+    alert_tier: "RED"
+
+# News Source Quality Tiers
+# Only scan high-quality sources for regime shifts to reduce noise
+
+high_priority_sources:
+  tier_1_official:
+    - "Federal Reserve press releases"
+    - "ECB announcements"
+    - "BLS reports"
+    - "Treasury Department"
+    - "FDIC statements"
+    - "SEC filings"
+
+  tier_2_expert:
+    - "GMO quarterly letters"
+    - "Bridgewater research"
+    - "Hussman weekly commentary"
+    - "Gundlach presentations"
+    - "Buffett shareholder letters"
+
+  tier_3_news:
+    - "Wall Street Journal"
+    - "Financial Times"
+    - "Bloomberg"
+    - "Reuters"
+    - "The Economist"
+
+  # Avoid for regime shift detection (too noisy):
+  exclude:
+    - "Zero Hedge"
+    - "Seeking Alpha comment sections"
+    - "Twitter/X"
+    - "Reddit"
+    - "Generic business news"
+
+# Backtesting Validation
+# Use these historical events to validate LLM detection accuracy
+
+validation_test_cases:
+  - date: "2008-09-15"
+    event: "Lehman Brothers bankruptcy"
+    expected_category: "financial_contagion"
+    expected_score: 3.0
+    test_articles: "path/to/test/lehman_articles.json"
+
+  - date: "2020-03-11"
+    event: "COVID-19 pandemic declared"
+    expected_category: "geopolitical_shock"
+    expected_score: 2.0
+    test_articles: "path/to/test/covid_articles.json"
+
+  - date: "2020-03-03"
+    event: "Fed emergency 50bps cut"
+    expected_category: "policy_reversal"
+    expected_score: 1.5
+    test_articles: "path/to/test/fed_cut_articles.json"
+
+  - date: "2021-01-05"
+    event: "Grantham declares 'epic bubble'"
+    expected_category: "expert_capitulation"
+    expected_score: 1.0
+    test_articles: "path/to/test/grantham_articles.json"
