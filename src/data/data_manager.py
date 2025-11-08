@@ -12,6 +12,7 @@ from datetime import datetime
 from src.config.config_manager import ConfigManager
 from src.data.fred_client import FREDClient
 from src.data.market_data import MarketDataClient
+from src.data.shiller import ShillerDataClient
 
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,7 @@ class DataManager:
         # Initialize clients
         self.fred_client = FREDClient(config)
         self.market_client = MarketDataClient(config)
+        self.shiller_client = ShillerDataClient()
 
         logger.info("Data manager initialized")
 
@@ -139,8 +141,8 @@ class DataManager:
             'sp500_price': self.fred_client.get_latest_value('SP500'),
             'sp500_forward_pe': self.market_client.get_forward_pe('^GSPC'),  # Keep trying Yahoo
 
-            # Shiller CAPE (would need separate scraper, stub for now)
-            'shiller_cape': None,  # TODO: Implement Shiller scraper
+            # Shiller CAPE (Cyclically Adjusted PE Ratio)
+            'shiller_cape': self.shiller_client.get_latest_cape(),
 
             # Buffett indicator (Market Cap / GDP)
             # Note: Wilshire 5000 discontinued from FRED, using S&P 500 as proxy
