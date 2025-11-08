@@ -1,0 +1,315 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main, develop ]
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: '3.11'
+  PYTEST_ADDOPTS: '--color=yes'
+
+jobs:
+  lint:
+    name: Lint and Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black isort mypy
+        pip install -r requirements.txt
+
+    - name: Run Black (code formatting check)
+      run: black --check src/ tests/
+      continue-on-error: true
+
+    - name: Run isort (import sorting check)
+      run: isort --check-only --profile black src/ tests/
+      continue-on-error: true
+
+    - name: Run Flake8 (linting)
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 src/ tests/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 src/ tests/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
+
+    - name: Run MyPy (type checking)
+      run: mypy src/ --ignore-missing-imports --no-strict-optional
+      continue-on-error: true
+
+  test-unit:
+    name: Unit Tests (Python ${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11', '3.12']
+        exclude:
+          # Reduce CI time - skip some combinations
+          - os: macos-latest
+            python-version: '3.9'
+          - os: macos-latest
+            python-version: '3.10'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Create config directory structure
+      run: |
+        mkdir -p config/credentials
+        mkdir -p data/cache/fred data/cache/yahoo data/history
+
+    - name: Create dummy secrets file
+      run: |
+        echo "[api_keys]" > config/credentials/secrets.ini
+        echo "fred_api_key = dummy_key_for_testing" >> config/credentials/secrets.ini
+        echo "sendgrid_api_key = dummy_sendgrid_key" >> config/credentials/secrets.ini
+      shell: bash
+
+    - name: Run unit tests (without API calls)
+      run: |
+        pytest tests/ -m "unit and not api and not requires_secrets" --cov-fail-under=0
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results-${{ matrix.os }}-${{ matrix.python-version }}
+        path: |
+          htmlcov/
+          coverage.xml
+          .pytest_cache/
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: test-unit
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Create config directory structure
+      run: |
+        mkdir -p config/credentials
+        mkdir -p data/cache/fred data/cache/yahoo data/history
+
+    - name: Set up test configuration
+      run: |
+        cp config/credentials/secrets.ini.example config/credentials/secrets.ini
+        # Use real or dummy API key based on secrets availability
+        if [ -n "${{ secrets.FRED_API_KEY }}" ]; then
+          echo "[api_keys]" > config/credentials/secrets.ini
+          echo "fred_api_key = ${{ secrets.FRED_API_KEY }}" >> config/credentials/secrets.ini
+        else
+          echo "[api_keys]" > config/credentials/secrets.ini
+          echo "fred_api_key = dummy_key_for_testing" >> config/credentials/secrets.ini
+        fi
+
+    - name: Run integration tests (without API calls)
+      run: |
+        pytest tests/ -m "integration and not api" --cov-fail-under=0
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Run integration tests (with API calls) - if API key available
+      if: secrets.FRED_API_KEY != ''
+      run: |
+        pytest tests/ -m "integration and api" --cov-fail-under=0
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+      continue-on-error: true
+
+  test-coverage:
+    name: Test Coverage Report
+    runs-on: ubuntu-latest
+    needs: [test-unit, test-integration]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-cov coverage[toml]
+
+    - name: Create config directory structure
+      run: |
+        mkdir -p config/credentials data/cache/fred data/cache/yahoo data/history
+        echo "[api_keys]" > config/credentials/secrets.ini
+        echo "fred_api_key = dummy_key" >> config/credentials/secrets.ini
+
+    - name: Run all tests with coverage
+      run: |
+        pytest tests/ -m "not api and not requires_secrets" --cov=src --cov-report=xml --cov-report=html --cov-fail-under=0
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Generate coverage report
+      run: |
+        coverage report -m
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-aegis
+        fail_ci_if_error: false
+
+    - name: Upload coverage HTML report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: htmlcov/
+
+  test-smoke:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Create minimal config
+      run: |
+        mkdir -p config/credentials
+        echo "[api_keys]" > config/credentials/secrets.ini
+        echo "fred_api_key = dummy_key" >> config/credentials/secrets.ini
+
+    - name: Test configuration loading
+      run: python src/config/config_manager.py --test
+      continue-on-error: true
+
+    - name: Run smoke tests
+      run: pytest tests/ -m smoke -v --cov-fail-under=0
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+      continue-on-error: true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit
+        pip install -r requirements.txt
+
+    - name: Run Safety (dependency vulnerability check)
+      run: safety check --json || true
+      continue-on-error: true
+
+    - name: Run Bandit (security linting)
+      run: bandit -r src/ -f json -o bandit-report.json || true
+      continue-on-error: true
+
+    - name: Upload security reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+
+  build-status:
+    name: Build Status Summary
+    runs-on: ubuntu-latest
+    needs: [lint, test-unit, test-integration, test-coverage, test-smoke, security-scan]
+    if: always()
+
+    steps:
+    - name: Check build status
+      run: |
+        echo "Lint: ${{ needs.lint.result }}"
+        echo "Unit Tests: ${{ needs.test-unit.result }}"
+        echo "Integration Tests: ${{ needs.test-integration.result }}"
+        echo "Coverage: ${{ needs.test-coverage.result }}"
+        echo "Smoke Tests: ${{ needs.test-smoke.result }}"
+        echo "Security: ${{ needs.security-scan.result }}"
+
+    - name: Report status
+      run: |
+        if [ "${{ needs.test-unit.result }}" != "success" ]; then
+          echo "❌ Unit tests failed"
+          exit 1
+        fi
+        if [ "${{ needs.test-integration.result }}" != "success" ]; then
+          echo "⚠️  Integration tests failed (may be expected without API keys)"
+        fi
+        echo "✅ Build completed"

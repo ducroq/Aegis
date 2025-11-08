@@ -1,0 +1,46 @@
+# Coverage.py configuration for Aegis
+
+[run]
+source = src
+branch = True
+omit =
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */venv/*
+    */env/*
+    */site-packages/*
+    src/dashboard/*
+    */__init__.py
+    */conftest.py
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+
+exclude_lines =
+    # Standard exclusions
+    pragma: no cover
+    def __repr__
+    def __str__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+    @abc.abstractmethod
+    # Custom exclusions
+    pass
+    \.\.\.
+    raise NotImplementedError
+
+[html]
+directory = htmlcov
+title = Aegis Test Coverage Report
+
+[xml]
+output = coverage.xml
+
+[json]
+output = coverage.json

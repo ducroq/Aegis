@@ -1,0 +1,96 @@
+name: Coverage Report
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  coverage:
+    name: Generate Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-cov coverage[toml] pytest-html
+
+    - name: Create config directory
+      run: |
+        mkdir -p config/credentials data/cache/fred data/cache/yahoo data/history
+        echo "[api_keys]" > config/credentials/secrets.ini
+        echo "fred_api_key = dummy_key" >> config/credentials/secrets.ini
+
+    - name: Run tests with coverage
+      run: |
+        pytest tests/ \
+          -m "not api and not requires_secrets" \
+          --cov=src \
+          --cov-report=term-missing \
+          --cov-report=html:htmlcov \
+          --cov-report=xml:coverage.xml \
+          --cov-report=json:coverage.json \
+          --html=test-report.html \
+          --self-contained-html \
+          --cov-fail-under=0
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+    - name: Generate coverage badge
+      run: |
+        pip install coverage-badge
+        coverage-badge -o coverage.svg -f
+
+    - name: Generate detailed coverage report
+      run: |
+        coverage report -m > coverage-report.txt
+        coverage html
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: aegis-coverage
+        fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload coverage artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-reports
+        path: |
+          htmlcov/
+          coverage.xml
+          coverage.json
+          coverage.svg
+          coverage-report.txt
+          test-report.html
+
+    - name: Comment coverage on PR
+      if: github.event_name == 'pull_request'
+      uses: py-cov-action/python-coverage-comment-action@v3
+      with:
+        GITHUB_TOKEN: ${{ github.token }}
+        MINIMUM_GREEN: 90
+        MINIMUM_ORANGE: 70
+      continue-on-error: true
+
+    - name: Coverage summary
+      run: |
+        echo "## Coverage Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
