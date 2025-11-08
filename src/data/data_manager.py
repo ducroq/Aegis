@@ -94,8 +94,9 @@ class DataManager:
             'unemployment_claims_velocity_yoy': self.fred_client.calculate_velocity('ICSA', method='yoy_pct'),
 
             # ISM PMI (regime shift indicator)
-            'ism_pmi': self.fred_client.get_latest_value('NAPM'),
-            'ism_pmi_prev': self._get_previous_value('NAPM'),  # For detecting crosses
+            # Note: NAPM discontinued, using manufacturing employment as proxy
+            'ism_pmi': self.fred_client.get_latest_value('MANEMP'),
+            'ism_pmi_prev': self._get_previous_value('MANEMP'),  # For detecting crosses
 
             # Yield curves
             'yield_curve_10y2y': self.fred_client.get_latest_value('T10Y2Y'),
@@ -134,16 +135,18 @@ class DataManager:
         logger.info("Fetching valuation indicators...")
 
         return {
-            # Market prices
-            'sp500_price': self.market_client.get_sp500_price(),
-            'sp500_forward_pe': self.market_client.get_forward_pe('^GSPC'),
+            # Market prices (use FRED instead of Yahoo Finance to avoid rate limits)
+            'sp500_price': self.fred_client.get_latest_value('SP500'),
+            'sp500_forward_pe': self.market_client.get_forward_pe('^GSPC'),  # Keep trying Yahoo
 
             # Shiller CAPE (would need separate scraper, stub for now)
             'shiller_cape': None,  # TODO: Implement Shiller scraper
 
             # Buffett indicator (Market Cap / GDP)
-            # Numerator: Wilshire 5000 Total Market Index
-            'wilshire_5000': self.fred_client.get_latest_value('WILL5000IND'),
+            # Note: Wilshire 5000 discontinued from FRED, using S&P 500 as proxy
+            # For proper Buffett indicator, would need: (Wilshire 5000 / GDP) * 100
+            # Using S&P 500 level as simpler proxy for now
+            'sp500_level': self.fred_client.get_latest_value('SP500'),
             # Denominator: GDP (quarterly, may be stale)
             'gdp': self.fred_client.get_latest_value('GDP'),
         }
@@ -169,8 +172,8 @@ class DataManager:
             # Margin debt (may need alternative source)
             'margin_debt': None,  # TODO: Add FINRA data source if needed
 
-            # VIX (market volatility)
-            'vix': self.market_client.get_vix(),
+            # VIX (market volatility) - use FRED to avoid Yahoo Finance rate limits
+            'vix': self.fred_client.get_latest_value('VIXCLS'),
         }
 
     def _fetch_positioning_indicators(self) -> Dict[str, Any]:
@@ -191,8 +194,8 @@ class DataManager:
             # VIX futures positioning
             'vix_net_speculative': None,  # TODO: Implement CFTC client
 
-            # For now, use VIX as a proxy for complacency
-            'vix_proxy': self.market_client.get_vix(),
+            # For now, use VIX as a proxy for complacency (FRED instead of Yahoo)
+            'vix_proxy': self.fred_client.get_latest_value('VIXCLS'),
         }
 
     def _get_previous_value(self, series_id: str, periods_back: int = 1) -> Optional[float]:
