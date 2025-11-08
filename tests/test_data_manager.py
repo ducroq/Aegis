@@ -102,20 +102,27 @@ class TestDataManager:
         """Test fetching valuation indicators."""
         fred_client, market_client = mock_clients
 
+        # Mock Shiller client
+        mock_shiller = MagicMock()
+        mock_shiller.get_latest_cape.return_value = 30.81
+
         with patch('src.data.data_manager.FREDClient', return_value=fred_client), \
-             patch('src.data.data_manager.MarketDataClient', return_value=market_client):
+             patch('src.data.data_manager.MarketDataClient', return_value=market_client), \
+             patch('src.data.data_manager.ShillerDataClient', return_value=mock_shiller):
             manager = DataManager(config=mock_config)
             data = manager._fetch_valuation_indicators()
 
-            # Check expected keys
+            # Check expected keys (updated for new structure)
             assert 'sp500_price' in data
             assert 'sp500_forward_pe' in data
-            assert 'wilshire_5000' in data
+            assert 'shiller_cape' in data  # Changed from wilshire_5000
+            assert 'sp500_level' in data   # Added
             assert 'gdp' in data
 
-            # Verify both clients were called
+            # Verify clients were called
             assert fred_client.get_latest_value.called
-            assert market_client.get_sp500_price.called
+            assert market_client.get_forward_pe.called
+            assert mock_shiller.get_latest_cape.called
 
     def test_fetch_liquidity_indicators(self, mock_config, mock_clients):
         """Test fetching liquidity indicators."""
