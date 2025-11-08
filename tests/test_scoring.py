@@ -337,6 +337,48 @@ class TestPositioningScorer:
         # Should have note about CFTC not implemented
         assert any('CFTC' in signal for signal in result['signals'])
 
+    def test_missing_vix_data(self, scorer):
+        """Test handling when VIX data is missing."""
+        indicators = {
+            'vix_proxy': None
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['score'] == 0.0
+        assert result['components']['vix_positioning'] is None
+        # Check for CFTC note (since VIX is missing, CFTC data is also None)
+        assert any('CFTC' in signal for signal in result['signals'])
+
+    def test_very_low_vix(self, scorer):
+        """Test scoring with very low VIX (complacency)."""
+        indicators = {
+            'vix_proxy': 12.0
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['score'] == 5.0
+        assert any('WARNING' in signal for signal in result['signals'])
+
+    def test_low_vix(self, scorer):
+        """Test scoring with low VIX (some complacency)."""
+        indicators = {
+            'vix_proxy': 14.0
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['score'] == 2.0
+        assert any('WATCH' in signal for signal in result['signals'])
+
+    def test_extreme_fear_vix(self, scorer):
+        """Test scoring with extreme high VIX (panic)."""
+        indicators = {
+            'vix_proxy': 45.0
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['score'] == 3.0
+        assert any('extreme' in signal.lower() for signal in result['signals'])
+
 
 class TestRiskAggregator:
     """Tests for RiskAggregator."""
