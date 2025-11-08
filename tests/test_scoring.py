@@ -213,6 +213,48 @@ class TestValuationScorer:
         assert result['score'] > 8.0
         assert len(result['signals']) >= 2
 
+    def test_missing_cape(self, scorer):
+        """Test handling when CAPE is missing."""
+        indicators = {
+            'shiller_cape': None,
+            'wilshire_5000': 28000,
+            'gdp': 28000,
+            'sp500_forward_pe': 18.0
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['components']['cape'] is None
+        # Should still score with other indicators
+        assert result['score'] >= 0
+
+    def test_missing_buffett_indicator(self, scorer):
+        """Test handling when Buffett indicator data is missing."""
+        indicators = {
+            'shiller_cape': 25.0,
+            'wilshire_5000': None,
+            'gdp': None,
+            'sp500_forward_pe': 18.0
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['components']['buffett_indicator'] is None
+        # Should still score with other indicators
+        assert result['score'] >= 0
+
+    def test_missing_forward_pe(self, scorer):
+        """Test handling when forward P/E is missing."""
+        indicators = {
+            'shiller_cape': 25.0,
+            'wilshire_5000': 28000,
+            'gdp': 28000,
+            'sp500_forward_pe': None
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['components']['forward_pe'] is None
+        # Should still score with other indicators
+        assert result['score'] >= 0
+
     def test_cape_scoring(self, scorer):
         """Test CAPE ratio scoring."""
         # Bubble levels
@@ -264,6 +306,45 @@ class TestLiquidityScorer:
         result = scorer.calculate_score(indicators)
 
         assert result['score'] > 7.0
+
+    def test_missing_fed_velocity(self, scorer):
+        """Test handling when Fed funds velocity is missing."""
+        indicators = {
+            'fed_funds_velocity_6m': None,
+            'm2_velocity_yoy': 5.0,
+            'vix': 15.0
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['components']['fed_trajectory'] is None
+        # Should still score with other indicators
+        assert result['score'] >= 0
+
+    def test_missing_m2_velocity(self, scorer):
+        """Test handling when M2 velocity is missing."""
+        indicators = {
+            'fed_funds_velocity_6m': 0.3,
+            'm2_velocity_yoy': None,
+            'vix': 15.0
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['components']['m2_growth'] is None
+        # Should still score with other indicators
+        assert result['score'] >= 0
+
+    def test_missing_vix(self, scorer):
+        """Test handling when VIX is missing."""
+        indicators = {
+            'fed_funds_velocity_6m': 0.3,
+            'm2_velocity_yoy': 5.0,
+            'vix': None
+        }
+        result = scorer.calculate_score(indicators)
+
+        assert result['components']['vix'] is None
+        # Should still score with other indicators
+        assert result['score'] >= 0
 
     def test_fed_tightening(self, scorer):
         """Test Fed tightening trajectory scoring."""
