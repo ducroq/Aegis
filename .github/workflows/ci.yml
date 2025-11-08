@@ -158,7 +158,7 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}
 
     - name: Run integration tests (with API calls) - if API key available
-      if: secrets.FRED_API_KEY != ''
+      if: ${{ secrets.FRED_API_KEY != '' }}
       run: |
         pytest tests/ -m "integration and api" --cov-fail-under=0
       env:
