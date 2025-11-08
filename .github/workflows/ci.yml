@@ -88,8 +88,8 @@ jobs:
 
     - name: Create config directory structure
       run: |
-        mkdir -p config/credentials
-        mkdir -p data/cache/fred data/cache/yahoo data/history
+        mkdir -p config/credentials data/cache/fred data/cache/yahoo data/history
+      shell: bash
 
     - name: Create dummy secrets file
       run: |
@@ -100,7 +100,7 @@ jobs:
 
     - name: Run unit tests (without API calls)
       run: |
-        pytest tests/ -m "unit and not api and not requires_secrets" --cov-fail-under=0
+        pytest tests/ -m "not api and not requires_secrets" --cov-fail-under=0
       env:
         PYTHONPATH: ${{ github.workspace }}
 
@@ -136,8 +136,8 @@ jobs:
 
     - name: Create config directory structure
       run: |
-        mkdir -p config/credentials
-        mkdir -p data/cache/fred data/cache/yahoo data/history
+        mkdir -p config/credentials data/cache/fred data/cache/yahoo data/history
+      shell: bash
 
     - name: Set up test configuration
       run: |
