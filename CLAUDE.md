@@ -1,6 +1,36 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code when working with the Aegis project.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Documentation Structure
+
+Aegis uses the **AI-Augmented Solo Dev Framework** for progressive disclosure of context:
+
+**Start Here (High-Level Overview):**
+- `docs/PROJECT_OVERVIEW.md` - Current status, active focus, quick links
+- `docs/ARCHITECTURE.md` - System design, components, data flow
+- `README.md` - Quick start and installation
+
+**Current Work:**
+- `docs/CURRENT_TASK.md` - What's being worked on right now
+- `docs/OPEN_QUESTIONS.md` - Unresolved decisions and blockers
+- `docs/ROADMAP.md` - Now/Next/Later priorities
+
+**Deep Dives (Progressive Disclosure):**
+- `docs/components/` - Detailed component documentation (FRED client, scorers, aggregator)
+- `docs/decisions/` - Architecture Decision Records (ADRs) for major methodology choices
+- `docs/INDICATORS_CATALOG.md` - Complete reference of all indicators
+- `docs/BACKTESTING_RESULTS.md` - Historical validation metrics
+- `docs/METHODOLOGY_EVOLUTION.md` - Timeline of methodology changes
+
+**How to Navigate:**
+1. **Quick orientation:** Read `PROJECT_OVERVIEW.md` first (5 min)
+2. **Understanding architecture:** Read `ARCHITECTURE.md` (10 min)
+3. **Working on specific component:** Check `docs/components/[name].md`
+4. **Understanding past decisions:** Check `docs/decisions/` ADRs
+5. **Implementation details:** This CLAUDE.md file (below)
+
+---
 
 ## Project Overview
 
@@ -69,6 +99,17 @@ Each dimension scored 0-10, then weighted average = overall risk score.
 - OR risk ≥ 6.5 AND rising >1.0 point in 4 weeks
 - OR 2+ dimensions ≥ 8.0 simultaneously
 
+## Project Status
+
+**Current State:** Scaffold/skeleton phase. Configuration files, documentation, and directory structure are complete. Core implementation modules need to be built.
+
+**Implementation Priority:**
+1. `src/config/config_manager.py` - Configuration loading system
+2. `src/data/` modules - Data fetchers (FRED, Yahoo Finance, Shiller)
+3. `src/scoring/` modules - Risk calculation engines
+4. `scripts/` - Daily update and reporting scripts
+5. `src/alerts/` - Alert logic and email delivery
+
 ## Development Commands
 
 ### Setup
@@ -76,15 +117,19 @@ Each dimension scored 0-10, then weighted average = overall risk score.
 # Install dependencies
 pip install -r requirements.txt
 
-# Test configuration
-python src/config/config_manager.py --test
+# Configure API credentials
+# Windows:
+copy config\credentials\secrets.ini.example config\credentials\secrets.ini
+# Mac/Linux:
+cp config/credentials/secrets.ini.example config/credentials/secrets.ini
 
-# Get FRED API key
-# Visit: https://fred.stlouisfed.org/docs/api/api_key.html
-# Add to config/credentials/secrets.ini
+# Edit secrets.ini and add your FRED API key from https://fred.stlouisfed.org/docs/api/api_key.html
+
+# Test configuration (once config_manager.py is implemented)
+python src/config/config_manager.py --test
 ```
 
-### Daily Workflow
+### Daily Workflow (Once Implemented)
 ```bash
 # Fetch latest data and calculate risk score
 python scripts/daily_update.py
@@ -96,16 +141,48 @@ python scripts/show_status.py
 python scripts/weekly_report.py
 ```
 
-### Development
+### Development & Testing
 ```bash
 # Run tests
 pytest tests/
 
-# Backtest historical data
+# Run tests with coverage
+pytest --cov=src tests/
+
+# Backtest historical data (once implemented)
 python scripts/backtest.py --start-date 2000-01-01
 
-# Launch dashboard (optional)
+# Launch dashboard (optional, lower priority)
 python src/dashboard/app.py
+```
+
+## Implementation Guidelines
+
+### Code Style & Patterns
+- **Type hints**: Use Python type hints for all function signatures
+- **Docstrings**: Google-style docstrings for all public functions/classes
+- **Error handling**: Graceful degradation for missing data (use last known value)
+- **Logging**: Use Python logging module (configured in `config/app.yaml`)
+- **Testing**: Write unit tests alongside implementation (pytest)
+
+### Critical Design Principles
+1. **Reproducibility**: Same inputs = same outputs. No randomness in scoring.
+2. **Transparency**: All scoring thresholds must be in config files, not hardcoded.
+3. **Auditability**: Log all data fetches, score calculations, and alert decisions.
+4. **Backtest-friendly**: Never use future data (watch for look-ahead bias).
+5. **Fail gracefully**: If one indicator fails to fetch, calculate score with available data.
+
+### Module Dependencies
+```
+config_manager.py (no dependencies, load first)
+    ↓
+data/*.py (depends on config_manager)
+    ↓
+scoring/*.py (depends on data modules)
+    ↓
+alerts/*.py (depends on scoring)
+    ↓
+scripts/*.py (orchestrates everything)
 ```
 
 ## Configuration System
@@ -113,18 +190,19 @@ python src/dashboard/app.py
 ### File Structure
 ```
 config/
-├── app.yaml                 # General settings
+├── app.yaml                 # General settings, dimension weights
 ├── indicators.yaml          # Data sources, scoring formulas
-├── thresholds.yaml          # Alert configuration
+├── regime_shifts.yaml       # Qualitative event detection rules
 └── credentials/
     ├── secrets.ini          # API keys (gitignored)
     └── secrets.ini.example  # Template
 ```
 
 ### Configuration Loading
-- Similar to NexusMind-Filter: hierarchical config with dot notation
+- Hierarchical config with dot notation (e.g., `config.get("scoring.weights.recession")`)
 - Environment variables override file configs (`AEGIS_*` prefix)
-- Secrets loaded separately (API keys, email credentials)
+- Secrets loaded separately from `secrets.ini` (API keys, email credentials)
+- Validation: Check weight sums = 1.0, required fields present
 
 ### Example Access
 ```python
@@ -397,6 +475,54 @@ def test_recession_risk_normal_conditions():
 2. **Too many alerts** (>6/year): Raise threshold (6.5 → 7.0)
 3. **Too few alerts** (<2/year): Lower threshold (7.0 → 6.5)
 4. **False alarms**: Increase minimum persistence (e.g., 2 weeks above threshold)
+
+## Current File Status
+
+### ✅ Complete (Configuration & Documentation)
+- `config/app.yaml` - Application settings and dimension weights
+- `config/indicators.yaml` - Detailed indicator definitions and scoring rules
+- `config/regime_shifts.yaml` - Qualitative event detection configuration
+- `config/credentials/secrets.ini.example` - Template for API keys
+- `README.md` - Project overview and quick start
+- `docs/methodology.md` - Detailed scoring methodology with enhancements
+- `docs/getting_started.md` - Step-by-step setup guide
+- `requirements.txt` - Python dependencies
+
+### 🚧 To Be Implemented (Python Modules)
+**Priority 1 - Core Infrastructure:**
+- `src/config/config_manager.py` - Load YAML configs and secrets
+- `src/data/fred_client.py` - FRED API wrapper
+- `src/data/market_data.py` - Yahoo Finance integration
+- `src/data/data_manager.py` - Orchestrate all data fetching
+
+**Priority 2 - Scoring Logic:**
+- `src/scoring/recession.py` - Recession risk calculator (velocity-based)
+- `src/scoring/credit.py` - Credit stress calculator (velocity + level)
+- `src/scoring/valuation.py` - Valuation extremes (CAPE, Buffett indicator)
+- `src/scoring/liquidity.py` - Liquidity conditions (Fed policy, M2)
+- `src/scoring/positioning.py` - CFTC positioning (NEW dimension)
+- `src/scoring/aggregator.py` - Weighted risk aggregation
+- `src/scoring/regime_shift.py` - LLM-based qualitative overlay (optional)
+
+**Priority 3 - Alerts & Reporting:**
+- `src/alerts/alert_logic.py` - Threshold checking and trigger conditions
+- `src/alerts/email_sender.py` - Email notification system
+
+**Priority 4 - Scripts (Orchestration):**
+- `scripts/daily_update.py` - Fetch data, calculate scores, store history
+- `scripts/show_status.py` - Display current risk assessment
+- `scripts/weekly_report.py` - Generate report, send alerts if triggered
+- `scripts/backtest.py` - Historical validation
+
+**Priority 5 - Testing:**
+- `tests/test_config.py` - Config loading tests
+- `tests/test_scoring.py` - Scoring function unit tests
+- `tests/test_data.py` - Data fetching tests
+
+**Lower Priority:**
+- `src/data/shiller.py` - Shiller CAPE data scraper (manual monthly update)
+- `src/data/cftc_client.py` - CFTC Commitments of Traders data
+- `src/dashboard/app.py` - Optional Flask dashboard
 
 ## Important Gotchas
 

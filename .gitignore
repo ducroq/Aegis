@@ -6,8 +6,12 @@ config/credentials/secrets.ini
 *.pem
 
 # Data files (can be large, regenerate from APIs)
-data/history/*.csv
+data/history/
 data/cache/
+data/history_test/
+
+# Claude Code settings (personal preferences)
+.claude/
 
 # Python
 __pycache__/
@@ -37,8 +41,13 @@ wheels/
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
+coverage.json
+coverage.svg
 htmlcov/
 .tox/
+test-report.html
+.mypy_cache/
 
 # IDE
 .vscode/
