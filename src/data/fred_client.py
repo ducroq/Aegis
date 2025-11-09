@@ -6,6 +6,7 @@ and velocity calculations.
 """
 
 import logging
+import time
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from pathlib import Path
@@ -64,6 +65,22 @@ class FREDClient:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
+        # Rate limiting: FRED allows 120 requests/minute
+        # To be safe, limit to 1.5 requests/second = 90 requests/minute
+        self.min_request_interval = 0.67  # seconds between requests
+        self.last_request_time = 0
+
+    def _rate_limit(self):
+        """Enforce rate limiting to comply with FRED API limits (120 req/min)."""
+        current_time = time.time()
+        time_since_last_request = current_time - self.last_request_time
+
+        if time_since_last_request < self.min_request_interval:
+            sleep_time = self.min_request_interval - time_since_last_request
+            time.sleep(sleep_time)
+
+        self.last_request_time = time.time()
+
     def get_series(
         self,
         series_id: str,
@@ -102,6 +119,10 @@ class FREDClient:
 
         try:
             logger.info(f"Fetching FRED series: {series_id}")
+
+            # Rate limit before making API call
+            self._rate_limit()
+
             series = self.fred.get_series(
                 series_id,
                 observation_start=start_date,
