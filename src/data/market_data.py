@@ -238,6 +238,55 @@ class MarketDataClient:
         logger.warning("Market Cap to GDP calculation requires FRED integration")
         return None
 
+    def get_price_as_of(self, ticker: str, as_of_date: str) -> Optional[float]:
+        """
+        Get ticker price as of a specific historical date.
+
+        Args:
+            ticker: Ticker symbol
+            as_of_date: Date to get price for (YYYY-MM-DD)
+
+        Returns:
+            Close price as of that date, or None if not available
+        """
+        try:
+            # Parse date
+            target_date = datetime.strptime(as_of_date, '%Y-%m-%d')
+
+            # Fetch data with some buffer (5 trading days before)
+            start_date = (target_date - timedelta(days=10)).strftime('%Y-%m-%d')
+            end_date = (target_date + timedelta(days=1)).strftime('%Y-%m-%d')
+
+            # Use yfinance download with date range
+            ticker_obj = yf.Ticker(ticker)
+            hist = ticker_obj.history(start=start_date, end=end_date)
+
+            if hist is None or len(hist) == 0:
+                return None
+
+            # Get most recent price on or before target date
+            hist = hist[hist.index <= target_date]
+            if len(hist) == 0:
+                return None
+
+            return float(hist['Close'].iloc[-1])
+
+        except Exception as e:
+            logger.error(f"Failed to get {ticker} price as of {as_of_date}: {e}")
+            return None
+
+    def get_vix_as_of(self, as_of_date: str) -> Optional[float]:
+        """
+        Get VIX as of a specific historical date.
+
+        Args:
+            as_of_date: Date to get VIX for (YYYY-MM-DD)
+
+        Returns:
+            VIX level as of that date, or None
+        """
+        return self.get_price_as_of('^VIX', as_of_date)
+
     def _get_cache_path(self, ticker: str, period: str) -> Path:
         """Get cache file path for a ticker/period."""
         safe_ticker = ticker.replace('^', '_')

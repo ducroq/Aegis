@@ -222,6 +222,142 @@ class FREDClient:
             logger.error(f"Failed to calculate velocity for {series_id}: {e}")
             return None
 
+    def get_value_as_of(
+        self,
+        series_id: str,
+        as_of_date: str,
+        max_days_old: int = 90
+    ) -> Optional[float]:
+        """
+        Get series value as of a specific historical date.
+
+        Args:
+            series_id: FRED series ID
+            as_of_date: Date to get value for (YYYY-MM-DD)
+            max_days_old: Maximum days to look back for most recent value
+
+        Returns:
+            Value as of that date, or None if not available
+        """
+        # Fetch series with appropriate date range (disable cache to avoid stale data)
+        target_date = datetime.strptime(as_of_date, '%Y-%m-%d')
+        start_date = (target_date - timedelta(days=max_days_old)).strftime('%Y-%m-%d')
+        end_date = as_of_date
+
+        series = self.get_series(series_id, start_date=start_date, end_date=end_date, use_cache=False)
+        if series is None or len(series) == 0:
+            return None
+
+        try:
+            # Get most recent value on or before target date
+            series = series[series.index <= target_date]
+            if len(series) == 0:
+                return None
+
+            # Drop NaN values and get most recent non-NaN
+            series_clean = series.dropna()
+            if len(series_clean) == 0:
+                return None
+
+            value = float(series_clean.iloc[-1])
+
+            # Check if value is still NaN (edge case)
+            if pd.isna(value):
+                return None
+
+            return value
+
+        except Exception as e:
+            logger.error(f"Failed to get {series_id} as of {as_of_date}: {e}")
+            return None
+
+    def calculate_velocity_as_of(
+        self,
+        series_id: str,
+        as_of_date: str,
+        method: str = 'yoy_pct',
+        lookback_days: int = 365
+    ) -> Optional[float]:
+        """
+        Calculate velocity as of a specific historical date.
+
+        Args:
+            series_id: FRED series ID
+            as_of_date: Date to calculate velocity for (YYYY-MM-DD)
+            method: Calculation method (same as calculate_velocity)
+            lookback_days: Number of days to look back
+
+        Returns:
+            Velocity value or None
+        """
+        # Fetch series with enough history (disable cache to avoid stale data)
+        target_date = datetime.strptime(as_of_date, '%Y-%m-%d')
+        start_date = (target_date - timedelta(days=lookback_days + 180)).strftime('%Y-%m-%d')
+        end_date = as_of_date
+
+        series = self.get_series(series_id, start_date=start_date, end_date=end_date, use_cache=False)
+        if series is None or len(series) < 2:
+            return None
+
+        try:
+            # Filter to data available as of target date
+            series = series[series.index <= target_date]
+            if len(series) < 2:
+                return None
+
+            if method == 'yoy_pct':
+                current = series.iloc[-1]
+                year_ago_date = series.index[-1] - timedelta(days=lookback_days)
+                year_ago_series = series[series.index <= year_ago_date]
+
+                if len(year_ago_series) == 0:
+                    return None
+
+                year_ago = year_ago_series.iloc[-1]
+                if year_ago == 0:
+                    return None
+                velocity = ((current - year_ago) / year_ago) * 100
+                return float(velocity)
+
+            elif method == 'rate':
+                current = series.iloc[-1]
+                past_date = series.index[-1] - timedelta(days=lookback_days)
+                past_series = series[series.index <= past_date]
+
+                if len(past_series) == 0:
+                    return None
+
+                past_value = past_series.iloc[-1]
+                actual_days = (series.index[-1] - past_series.index[-1]).days
+                if actual_days == 0:
+                    return None
+
+                velocity = (current - past_value) / actual_days
+                return float(velocity)
+
+            elif method == 'pct_change':
+                current = series.iloc[-1]
+                past_date = series.index[-1] - timedelta(days=lookback_days)
+                past_series = series[series.index <= past_date]
+
+                if len(past_series) == 0:
+                    return None
+
+                past_value = past_series.iloc[-1]
+                if past_value == 0:
+                    return None
+
+                velocity = ((current - past_value) / past_value) * 100
+                return float(velocity)
+
+            else:
+                logger.error(f"Unknown velocity method: {method}")
+                return None
+
+        except Exception as e:
+            logger.error(f"Failed to calculate velocity for {series_id} as of {as_of_date}: {e}")
+            return None
+
     def get_moving_average(
         self,
         series_id: str,

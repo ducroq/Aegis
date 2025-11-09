@@ -73,6 +73,176 @@ class ShillerDataClient:
             logger.error(f"Failed to fetch Shiller CAPE: {e}")
             return None
 
+    def get_cape_as_of(self, as_of_date: str, use_cache: bool = True, cache_ttl_days: int = 30) -> Optional[float]:
+        """
+        Get CAPE ratio as of a specific historical date.
+
+        Args:
+            as_of_date: Date to get CAPE for (YYYY-MM-DD)
+            use_cache: Whether to use cached full dataset
+            cache_ttl_days: Cache time-to-live for full dataset
+
+        Returns:
+            CAPE ratio as of that date, or None if unavailable
+        """
+        try:
+            # Parse target date
+            target_date = pd.to_datetime(as_of_date)
+
+            # Load full historical dataset
+            df = self._load_full_dataset(use_cache, cache_ttl_days)
+            if df is None:
+                return None
+
+            # Filter to data available as of target date
+            # CAPE is monthly data, so we look for the most recent month <= target
+            df_filtered = df[df['Date'] <= target_date]
+
+            if len(df_filtered) == 0:
+                logger.warning(f"No CAPE data available before {as_of_date}")
+                return None
+
+            # Get CAPE value
+            cape_value = df_filtered['CAPE'].iloc[-1]
+
+            if pd.isna(cape_value):
+                logger.warning(f"CAPE value is null for date near {as_of_date}")
+                return None
+
+            return float(cape_value)
+
+        except Exception as e:
+            logger.error(f"Failed to get CAPE as of {as_of_date}: {e}")
+            return None
+
+    def _load_full_dataset(self, use_cache: bool = True, cache_ttl_days: int = 30) -> Optional[pd.DataFrame]:
+        """
+        Load full Shiller CAPE historical dataset.
+
+        Args:
+            use_cache: Whether to use cached dataset
+            cache_ttl_days: Cache time-to-live in days
+
+        Returns:
+            DataFrame with Date and CAPE columns, or None if error
+        """
+        # Check cache
+        if use_cache:
+            cached_df = self._load_dataset_from_cache(cache_ttl_days)
+            if cached_df is not None:
+                logger.debug(f"Loaded Shiller dataset from cache ({len(cached_df)} rows)")
+                return cached_df
+
+        # Fetch from web
+        try:
+            logger.info("Fetching full Shiller CAPE dataset from Yale...")
+
+            # Download Excel file
+            response = requests.get(self.DATA_URL, timeout=30)
+            response.raise_for_status()
+
+            # Save to temporary file
+            temp_file = self.cache_dir / 'temp_download.xls'
+            with open(temp_file, 'wb') as f:
+                f.write(response.content)
+
+            # Parse Excel file
+            df = pd.read_excel(
+                temp_file,
+                sheet_name='Data',
+                skiprows=7,
+                na_values=['.', ''],
+                engine='xlrd'
+            )
+
+            # Clean up temp file
+            temp_file.unlink(missing_ok=True)
+
+            # Find CAPE column
+            cape_column = None
+            for col in ['CAPE', 'Cyclically Adjusted PE Ratio', 'P/E10']:
+                if col in df.columns:
+                    cape_column = col
+                    break
+
+            if cape_column is None:
+                logger.error(f"CAPE column not found. Available columns: {df.columns.tolist()}")
+                return None
+
+            # Find date column (usually first column or "Date")
+            date_column = df.columns[0] if 'Date' not in df.columns else 'Date'
+
+            # Parse dates - Shiller uses YYYY.MM format (e.g., 1871.01, 2023.12)
+            def parse_shiller_date(date_val):
+                """Convert Shiller's YYYY.MM format to datetime."""
+                try:
+                    if pd.isna(date_val):
+                        return pd.NaT
+                    year = int(date_val)
+                    month = int(round((date_val - year) * 100))
+                    if month == 0:
+                        month = 1  # Handle cases like 1871.00
+                    return pd.Timestamp(year=year, month=month, day=1)
+                except:
+                    return pd.NaT
+
+            # Extract just Date and CAPE
+            df_clean = pd.DataFrame({
+                'Date': df[date_column].apply(parse_shiller_date),
+                'CAPE': pd.to_numeric(df[cape_column], errors='coerce')
+            })
+
+            # Drop rows with invalid dates or CAPE
+            df_clean = df_clean.dropna(subset=['Date'])
+
+            # Sort by date
+            df_clean = df_clean.sort_values('Date').reset_index(drop=True)
+
+            logger.info(f"Fetched Shiller dataset: {len(df_clean)} observations from {df_clean['Date'].min()} to {df_clean['Date'].max()}")
+
+            # Cache the dataset
+            if use_cache:
+                self._save_dataset_to_cache(df_clean)
+
+            return df_clean
+
+        except Exception as e:
+            logger.error(f"Error loading Shiller dataset: {e}")
+            return None
+
+    def _get_dataset_cache_path(self) -> Path:
+        """Get path to cached dataset file."""
+        return self.cache_dir / 'cape_historical.csv'
+
+    def _load_dataset_from_cache(self, ttl_days: int) -> Optional[pd.DataFrame]:
+        """Load full dataset from cache if fresh enough."""
+        cache_path = self._get_dataset_cache_path()
+
+        if not cache_path.exists():
+            return None
+
+        # Check cache age
+        cache_age = datetime.now() - datetime.fromtimestamp(cache_path.stat().st_mtime)
+        if cache_age > timedelta(days=ttl_days):
+            logger.debug(f"Dataset cache expired (age: {cache_age.days} days)")
+            return None
+
+        try:
+            df = pd.read_csv(cache_path, parse_dates=['Date'])
+            return df
+        except Exception as e:
+            logger.warning(f"Failed to load dataset cache: {e}")
+            return None
+
+    def _save_dataset_to_cache(self, df: pd.DataFrame) -> None:
+        """Save full dataset to cache."""
+        try:
+            cache_path = self._get_dataset_cache_path()
+            df.to_csv(cache_path, index=False)
+            logger.debug(f"Cached Shiller dataset: {len(df)} rows")
+        except Exception as e:
+            logger.warning(f"Failed to save dataset cache: {e}")
+
     def _fetch_cape_from_web(self) -> Optional[float]:
         """
         Fetch CAPE data from Shiller's website.

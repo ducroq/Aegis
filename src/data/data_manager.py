@@ -85,6 +85,40 @@ class DataManager:
 
         return data
 
+    def fetch_all_indicators_as_of(self, as_of_date: str) -> Dict[str, Any]:
+        """
+        Fetch all economic indicators as of a specific historical date.
+
+        Args:
+            as_of_date: Date to fetch indicators for (YYYY-MM-DD)
+
+        Returns:
+            Dict with all indicator data, organized by category
+        """
+        logger.info(f"Fetching all indicators as of {as_of_date}...")
+        start_time = datetime.now()
+
+        data = {
+            'recession': self._fetch_recession_indicators_as_of(as_of_date),
+            'credit': self._fetch_credit_indicators_as_of(as_of_date),
+            'valuation': self._fetch_valuation_indicators_as_of(as_of_date),
+            'liquidity': self._fetch_liquidity_indicators_as_of(as_of_date),
+            'positioning': self._fetch_positioning_indicators(),  # Still stubbed
+            'metadata': {
+                'fetch_timestamp': datetime.now().isoformat(),
+                'as_of_date': as_of_date,
+                'fetch_duration_seconds': 0
+            }
+        }
+
+        # Calculate fetch duration
+        duration = (datetime.now() - start_time).total_seconds()
+        data['metadata']['fetch_duration_seconds'] = duration
+
+        logger.info(f"Fetch completed in {duration:.1f} seconds")
+
+        return data
+
     def _fetch_recession_indicators(self) -> Dict[str, Any]:
         """Fetch recession risk indicators."""
         logger.info("Fetching recession indicators...")
@@ -198,6 +232,52 @@ class DataManager:
 
             # For now, use VIX as a proxy for complacency (FRED instead of Yahoo)
             'vix_proxy': self.fred_client.get_latest_value('VIXCLS'),
+        }
+
+    def _fetch_recession_indicators_as_of(self, as_of_date: str) -> Dict[str, Any]:
+        """Fetch recession indicators as of a specific date."""
+        return {
+            'unemployment_claims': self.fred_client.get_value_as_of('ICSA', as_of_date),
+            'unemployment_claims_velocity_yoy': self.fred_client.calculate_velocity_as_of('ICSA', as_of_date, method='yoy_pct'),
+            'ism_pmi': self.fred_client.get_value_as_of('MANEMP', as_of_date),
+            'yield_curve_10y2y': self.fred_client.get_value_as_of('T10Y2Y', as_of_date),
+            'yield_curve_10y3m': self.fred_client.get_value_as_of('T10Y3M', as_of_date),
+            'consumer_sentiment': self.fred_client.get_value_as_of('UMCSENT', as_of_date),
+        }
+
+    def _fetch_credit_indicators_as_of(self, as_of_date: str) -> Dict[str, Any]:
+        """Fetch credit indicators as of a specific date."""
+        return {
+            'hy_spread': self.fred_client.get_value_as_of('BAMLH0A0HYM2', as_of_date),
+            'hy_spread_velocity_20d': self.fred_client.calculate_velocity_as_of(
+                'BAMLH0A0HYM2', as_of_date, method='rate', lookback_days=20
+            ),
+            'ig_spread_bbb': self.fred_client.get_value_as_of('BAMLC0A4CBBB', as_of_date),
+            'ted_spread': self.fred_client.get_value_as_of('TEDRATE', as_of_date),
+            'bank_lending_standards': self.fred_client.get_value_as_of('DRTSCILM', as_of_date),
+        }
+
+    def _fetch_valuation_indicators_as_of(self, as_of_date: str) -> Dict[str, Any]:
+        """Fetch valuation indicators as of a specific date."""
+        return {
+            'sp500_price': self.fred_client.get_value_as_of('SP500', as_of_date),
+            'sp500_forward_pe': None,  # Historical forward P/E not available
+            'shiller_cape': self.shiller_client.get_cape_as_of(as_of_date),
+            'sp500_market_cap': self.fred_client.get_value_as_of('DDDM01USA156NWDB', as_of_date),
+            'gdp': self.fred_client.get_value_as_of('GDP', as_of_date),
+        }
+
+    def _fetch_liquidity_indicators_as_of(self, as_of_date: str) -> Dict[str, Any]:
+        """Fetch liquidity indicators as of a specific date."""
+        return {
+            'fed_funds_rate': self.fred_client.get_value_as_of('DFF', as_of_date),
+            'fed_funds_velocity': self.fred_client.calculate_velocity_as_of(
+                'DFF', as_of_date, method='pct_change', lookback_days=90
+            ),
+            'm2_money_supply': self.fred_client.get_value_as_of('M2SL', as_of_date),
+            'm2_velocity': self.fred_client.get_value_as_of('M2V', as_of_date),
+            'vix': self.market_client.get_vix_as_of(as_of_date),
+            'margin_debt': None,  # Not available historically
         }
 
     def _get_previous_value(self, series_id: str, periods_back: int = 1) -> Optional[float]:
