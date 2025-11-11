@@ -6,6 +6,94 @@
 
 ---
 
+## Priority 0: Polymarket Prediction Markets (NEW - HIGHEST SIGNAL!)
+
+### Why Polymarket is Perfect for Catalyst Detection:
+Prediction markets aggregate wisdom of crowds and reflect real-time probability of catalysts BEFORE they happen. Unlike news (reactive) or traditional indicators (lagging), Polymarket probabilities are forward-looking.
+
+**Examples**:
+- "Will S&P 500 fall >10% by Q1 2025?" - Direct crash probability
+- "Will US enter recession in 2025?" - Leading indicator
+- "Will there be war between [countries]?" - Geopolitical risk
+- "Will [bank] fail by [date]?" - Credit event risk
+
+### Gamma API (Free & Public)
+**Base URL**: `https://gamma-api.polymarket.com`
+**Documentation**: https://docs.polymarket.com/developers/gamma-markets-api/overview
+**Access**: Read-only, FREE, no authentication required for market data
+**Rate Limits**: 1,000 calls/hour (sufficient for daily polling)
+
+### Implementation Plan:
+
+#### Phase 1: Market Discovery (Week 1)
+1. Fetch all markets: `GET /markets`
+2. Filter for relevant categories:
+   - Economics ("recession", "unemployment", "inflation")
+   - Finance ("S&P 500", "crash", "bear market", "bank failure")
+   - Geopolitics ("war", "conflict", "sanctions")
+3. Store market IDs and metadata
+
+#### Phase 2: Daily Polling (Week 2)
+1. Create `src/data/polymarket_client.py`
+2. Daily fetch of selected markets
+3. Track probability changes:
+   - Alert if recession probability >50%
+   - Alert if crash probability >30%
+   - Alert if geopolitical risk >40%
+4. Store history in `data/polymarket_history.csv`
+
+#### Phase 3: Probability-Based Alerts (Week 3)
+1. Add to aggregator: `polymarket_catalyst_warning`
+2. Trigger logic:
+   - HIGH: Any crash/recession market >60% probability
+   - MEDIUM: Probability spike >20% in 7 days
+   - LOW: Probability >40% and rising
+3. Integration with existing Aegis risk score
+
+### Relevant Markets to Track:
+```
+- "S&P 500 down >10% by [date]"
+- "US enters recession in [year]"
+- "VIX >40 by [date]"
+- "Major bank failure in [year]"
+- "War between [countries] by [date]"
+- "Fed emergency rate cut by [date]"
+- "Stock market crash >20% by [date]"
+```
+
+### Advantages:
+- ✅ FREE and public
+- ✅ Forward-looking (not reactive)
+- ✅ Aggregates expert opinion
+- ✅ Real-time probability updates
+- ✅ Covers ALL catalyst types (geo, recession, credit, etc.)
+- ✅ No complex NLP/sentiment analysis needed
+- ✅ Proven predictive power (2024 election, etc.)
+
+### Code Example:
+```python
+import requests
+
+def get_recession_probability():
+    """Fetch current recession probability from Polymarket."""
+    resp = requests.get('https://gamma-api.polymarket.com/markets')
+    markets = resp.json()
+
+    # Find recession market
+    recession_markets = [m for m in markets
+                        if 'recession' in m['question'].lower()
+                        and '2025' in m['question']]
+
+    if recession_markets:
+        prob = recession_markets[0]['probability']
+        return prob
+    return None
+```
+
+**Recommendation**: START HERE! This is the highest-signal, lowest-effort catalyst detector.
+
+---
+
 ## Priority 1: Geopolitical Shock Detection
 
 ### Approach A: News Sentiment Analysis (Automated)
