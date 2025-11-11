@@ -1,8 +1,6 @@
 [build]
   # No build command needed - we're serving static files
-  command = ""  # Empty command = skip build
   publish = "dashboard"
-  ignore = "git diff --quiet HEAD^ HEAD -- dashboard/ netlify.toml"  # Only rebuild if dashboard/ changes
 
 # Security headers for all pages (inspired by energyDataDashboard)
 [[headers]]
