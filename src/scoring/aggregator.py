@@ -183,6 +183,12 @@ class RiskAggregator:
             None  # No historical data in live mode - will be populated during backtest
         )
 
+        # Check for retail capitulation (extreme sentiment - contrarian indicator)
+        # NOTE: Requires manual AAII sentiment data (weekly CSV download)
+        retail_capitulation_warning = self._check_retail_capitulation(
+            data.get('sentiment', {})
+        )
+
         # Collect all signals
         all_signals = {
             'recession': recession_result['signals'],
@@ -204,6 +210,7 @@ class RiskAggregator:
             'earnings_recession_warning': earnings_recession_warning,  # Profit decline warning
             'housing_bubble_warning': housing_bubble_warning,  # Housing market stress
             'dollar_liquidity_warning': dollar_liquidity_warning,  # Global dollar funding shortage
+            'retail_capitulation_warning': retail_capitulation_warning,  # Extreme sentiment (contrarian)
             'dimension_scores': dimension_scores,
             'dimension_details': {
                 'recession': recession_result,
@@ -821,6 +828,90 @@ class RiskAggregator:
             'dollar_3m_ago': None,
             'dollar_change_3m_pct': None,
             'swap_lines_outstanding': swap_lines
+        }
+
+    def _check_retail_capitulation(
+        self,
+        sentiment_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Check for extreme retail sentiment (contrarian indicator).
+
+        Signal #10: Retail Capitulation
+        - Bulls < 20%: Extreme bearishness = potential bottom (CAPITULATION)
+        - Bulls > 60%: Extreme bullishness = potential top (EUPHORIA)
+
+        Historical precedents:
+        - March 2009: Bulls <20% at market bottom (buying opportunity)
+        - January 2000: Bulls >60% at dot-com peak (sell signal)
+        - March 2020: Bulls <20% at COVID bottom (buying opportunity)
+        - Q4 2021: Bulls >60% before 2022 bear market (sell signal)
+
+        Args:
+            sentiment_data: Dict with 'bulls_percent' key from AAII sentiment survey
+
+        Returns:
+            Dict with:
+                - active: bool (True if extreme sentiment detected)
+                - level: 'HIGH' or None
+                - signal_type: 'CAPITULATION' or 'EUPHORIA'
+                - message: str (detailed warning message)
+                - bulls_percent: float (current bulls %)
+        """
+        bulls_pct = sentiment_data.get('bulls_percent')
+
+        if bulls_pct is None:
+            return {
+                'active': False,
+                'level': None,
+                'signal_type': None,
+                'message': None,
+                'bulls_percent': None
+            }
+
+        # CAPITULATION: Extreme bearishness (contrarian BUY signal)
+        if bulls_pct < 20:
+            message = (
+                f"RETAIL CAPITULATION: Extreme bearishness detected ({bulls_pct:.1f}% bulls). "
+                f"AAII sentiment below 20% historically marks market bottoms when combined with "
+                f"oversold technical conditions. Examples: March 2009 (S&P 666 → 2,873 by 2019), "
+                f"March 2020 (S&P 2,237 → 4,818 by 2022). Contrarian buying opportunity when "
+                f"retail panic peaks and all bad news is priced in. NOTE: This is a POSITIVE "
+                f"signal for long-term investors (time to deploy cash into quality assets)."
+            )
+            return {
+                'active': True,
+                'level': 'HIGH',
+                'signal_type': 'CAPITULATION',
+                'message': message,
+                'bulls_percent': bulls_pct
+            }
+
+        # EUPHORIA: Extreme bullishness (contrarian SELL signal)
+        elif bulls_pct > 60:
+            message = (
+                f"RETAIL EUPHORIA: Extreme bullishness detected ({bulls_pct:.1f}% bulls). "
+                f"AAII sentiment above 60% historically precedes major corrections when retail "
+                f"investors are all-in at market peaks. Examples: January 2000 (bulls 75%, then "
+                f"-49% crash 2000-2002), Q4 2021 (bulls 62%, then -25% bear market in 2022). "
+                f"Complacency risk: retail buying exhaustion leaves no marginal buyers. Consider "
+                f"trimming positions, building cash reserves, and reducing portfolio risk exposure."
+            )
+            return {
+                'active': True,
+                'level': 'HIGH',
+                'signal_type': 'EUPHORIA',
+                'message': message,
+                'bulls_percent': bulls_pct
+            }
+
+        # Neutral sentiment (no extreme reading)
+        return {
+            'active': False,
+            'level': None,
+            'signal_type': None,
+            'message': None,
+            'bulls_percent': bulls_pct
         }
 
     def _get_risk_tier(self, score: float) -> str:

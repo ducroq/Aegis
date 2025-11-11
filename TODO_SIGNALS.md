@@ -151,78 +151,57 @@ Add Signal #7 section after Signal #6.
 
 ---
 
-## Signal #10: Retail Capitulation (NOT STARTED)
+## Signal #10: Retail Capitulation (COMPLETED ✅)
 
-### Implementation Plan:
+### Completed:
+- ✅ Created `src/data/sentiment_data.py` - AAII sentiment data handler
+- ✅ Added `_check_retail_capitulation()` method to `src/scoring/aggregator.py`
+- ✅ Integrated check into `calculate_overall_risk()` method
+- ✅ Created `scripts/test_retail_capitulation_signal.py` backtest script
+- ✅ Created sample CSV template at `data/external/aaii_sentiment.csv`
 
-#### Data Source:
-- **AAII Sentiment Survey**: https://www.aaii.com/sentimentsurvey/sent_results
-- Weekly data, free download as CSV
-- No API available - requires manual download or web scraper
+### Implementation:
 
-#### Implementation Options:
+**Data Source**: AAII Sentiment Survey (https://www.aaii.com/sentimentsurvey/sent_results)
+- Weekly survey of retail investor sentiment
+- Manual CSV download (no API available)
+- Columns: Date, Bullish%, Neutral%, Bearish%
 
-**Option A (Manual - Recommended for MVP)**:
-1. User downloads CSV from AAII website weekly
+**Detection Logic**:
+- **CAPITULATION** (bulls <20%): Contrarian BUY signal
+  - Extreme bearishness historically marks market bottoms
+  - Examples: March 2009 (S&P 666), March 2020 (S&P 2,237)
+  - Signal type: Positive for long-term investors (deploy cash)
+
+- **EUPHORIA** (bulls >60%): Contrarian SELL signal
+  - Extreme bullishness historically precedes corrections
+  - Examples: January 2000 (dot-com peak), Q4 2021 (before -25% crash)
+  - Signal type: Warning to trim positions and build cash
+
+**Usage**:
+1. Download AAII sentiment CSV from website (weekly update)
 2. Save to `data/external/aaii_sentiment.csv`
-3. Add helper function to read this file in `src/data/sentiment_data.py`
-4. Document process in README
+3. Signal automatically checks sentiment when data available
+4. Backtesting: Use `test_retail_capitulation_signal.py`
 
-**Option B (Automated - Future Enhancement)**:
-1. Build web scraper using BeautifulSoup/Selenium
-2. Cache results locally
-3. Update weekly via cron job
-4. Risk: Scraper breaks if AAII changes website
+### Test Periods (Expected Triggers):
+- March 2009: Bulls <20% at financial crisis bottom (CAPITULATION)
+- January 2000: Bulls >60% at dot-com peak (EUPHORIA)
+- March 2020: Bulls <20% at COVID bottom (CAPITULATION)
+- Q4 2021: Bulls >60% before 2022 bear market (EUPHORIA)
 
-#### Signal Logic:
-
-```python
-def _check_retail_capitulation(sentiment_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Check for extreme retail sentiment (contrarian indicator).
-
-    Bulls < 20%: Extreme bearishness = potential bottom (CAPITULATION)
-    Bulls > 60%: Extreme bullishness = potential top (EUPHORIA)
-    """
-    bulls_pct = sentiment_data.get('bulls_percent')
-
-    if bulls_pct is None:
-        return {'active': False}
-
-    if bulls_pct < 20:
-        return {
-            'active': True,
-            'level': 'HIGH',
-            'signal_type': 'CAPITULATION',
-            'message': f"RETAIL CAPITULATION: Extreme bearishness ({bulls_pct:.1f}% bulls). "
-                      f"Historically marks bottoms when combined with oversold technicals. "
-                      f"Contrarian buying opportunity when panic peaks."
-        }
-    elif bulls_pct > 60:
-        return {
-            'active': True,
-            'level': 'HIGH',
-            'signal_type': 'EUPHORIA',
-            'message': f"RETAIL EUPHORIA: Extreme bullishness ({bulls_pct:.1f}% bulls). "
-                      f"Historically precedes corrections when retail is all-in. "
-                      f"Consider trimming positions as complacency peaks."
-        }
-
-    return {'active': False}
-```
-
-#### Test Periods:
-- March 2009: Bulls <20% at market bottom
-- January 2000: Bulls >60% at dot-com peak
-- March 2020: Bulls <20% at COVID bottom
-- Q4 2021: Bulls >60% before 2022 bear market
+### Notes:
+- Contrarian indicator: Extreme fear = buy, extreme greed = sell
+- Requires manual AAII CSV updates (no API available)
+- Weekly data (not daily) - acceptable for strategic positioning
+- Signal integrates seamlessly with existing risk framework
 
 ---
 
 ## Priority:
 
-1. **Complete Signal #7** (high priority - automated, predictive)
-2. **Implement Signal #10** (medium priority - requires manual data updates)
+1. ✅ **Signal #7** (COMPLETED - automated, predictive)
+2. ✅ **Signal #10** (COMPLETED - requires manual data updates)
 
 ---
 
