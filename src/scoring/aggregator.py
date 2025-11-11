@@ -176,6 +176,13 @@ class RiskAggregator:
             None  # No historical data in live mode - will be populated during backtest
         )
 
+        # Check for dollar liquidity stress (global dollar funding shortage)
+        # NOTE: Requires historical data window (not available during live fetch)
+        dollar_liquidity_warning = self._check_dollar_liquidity_stress(
+            data.get('liquidity', {}),
+            None  # No historical data in live mode - will be populated during backtest
+        )
+
         # Collect all signals
         all_signals = {
             'recession': recession_result['signals'],
@@ -196,6 +203,7 @@ class RiskAggregator:
             'real_rate_warning': real_rate_warning,  # Fed tightening warning
             'earnings_recession_warning': earnings_recession_warning,  # Profit decline warning
             'housing_bubble_warning': housing_bubble_warning,  # Housing market stress
+            'dollar_liquidity_warning': dollar_liquidity_warning,  # Global dollar funding shortage
             'dimension_scores': dimension_scores,
             'dimension_details': {
                 'recession': recession_result,
@@ -704,6 +712,115 @@ class RiskAggregator:
             'sales_change_6m_pct': None,
             'mortgage_rate_30y': mortgage_rate_30y,
             'median_home_price': median_home_price
+        }
+
+    def _check_dollar_liquidity_stress(
+        self,
+        liquidity_data: Dict[str, Any],
+        raw_indicators: 'pd.DataFrame' = None
+    ) -> Dict[str, Any]:
+        """
+        Check for dollar liquidity stress (global dollar funding shortage).
+
+        Detects rapid dollar strengthening combined with Fed activating swap lines,
+        indicating global dollar shortage/funding stress.
+
+        Historical examples: 2008 financial crisis, March 2020 COVID panic.
+        """
+        dollar_index = liquidity_data.get('dollar_index')
+        swap_lines = liquidity_data.get('fed_swap_lines')
+
+        # Need historical data to calculate 3-month change
+        if dollar_index is not None and raw_indicators is not None and len(raw_indicators) >= 4:
+            try:
+                # Get dollar index from 3 months ago
+                three_months_ago = raw_indicators.iloc[-4]
+                dollar_3m_ago = three_months_ago.get('liquidity_dollar_index')
+
+                if dollar_3m_ago and dollar_3m_ago > 0:
+                    dollar_change_3m = (dollar_index - dollar_3m_ago) / dollar_3m_ago
+
+                    # Also check if swap lines elevated (sign of stress)
+                    # Calculate historical percentile if we have enough data
+                    swap_lines_elevated = False
+                    if len(raw_indicators) >= 24 and swap_lines is not None:
+                        # Get past 24 months of swap line data
+                        historical_swaps = []
+                        for i in range(min(24, len(raw_indicators))):
+                            val = raw_indicators.iloc[-(i+1)].get('liquidity_fed_swap_lines')
+                            if val is not None:
+                                historical_swaps.append(val)
+
+                        if len(historical_swaps) > 0:
+                            percentile_90 = sorted(historical_swaps)[int(len(historical_swaps) * 0.9)]
+                            swap_lines_elevated = (swap_lines > percentile_90)
+
+                    # Trigger conditions
+                    # HIGH: 5%+ dollar spike + Fed swap lines activated
+                    if dollar_change_3m > 0.05 and swap_lines_elevated:
+                        message = (
+                            f"DOLLAR LIQUIDITY STRESS: Severe global dollar shortage. "
+                            f"Dollar index surged +{dollar_change_3m*100:.1f}% in 3 months "
+                            f"(from {dollar_3m_ago:.2f} to {dollar_index:.2f}) AND Fed activating "
+                            f"emergency swap lines (${swap_lines:.1f}B outstanding). "
+                            f"Historical precedent: 2008 financial crisis (dollar spike + Lehman), "
+                            f"March 2020 COVID panic (8% dollar surge in 2 weeks). "
+                            f"Global funding stress can cascade to EM debt crises, foreign bank failures."
+                        )
+                        return {
+                            'active': True,
+                            'level': 'HIGH',
+                            'message': message,
+                            'dollar_change_3m_pct': dollar_change_3m * 100,
+                            'current_dollar_index': dollar_index,
+                            'dollar_3m_ago': dollar_3m_ago,
+                            'swap_lines_outstanding': swap_lines,
+                            'swap_lines_elevated': swap_lines_elevated
+                        }
+
+                    # HIGH: 8%+ dollar spike alone (extreme panic)
+                    elif dollar_change_3m > 0.08:
+                        message = (
+                            f"DOLLAR LIQUIDITY STRESS: Extreme dollar surge signals global funding panic. "
+                            f"Dollar index spiked +{dollar_change_3m*100:.1f}% in 3 months "
+                            f"(from {dollar_3m_ago:.2f} to {dollar_index:.2f}). "
+                            f"Rapid dollar strength indicates offshore dollar shortage, "
+                            f"forcing EM/foreign banks to scramble for USD funding. "
+                            f"Can trigger cascade of margin calls, forced USD asset sales."
+                        )
+                        return {
+                            'active': True,
+                            'level': 'HIGH',
+                            'message': message,
+                            'dollar_change_3m_pct': dollar_change_3m * 100,
+                            'current_dollar_index': dollar_index,
+                            'dollar_3m_ago': dollar_3m_ago
+                        }
+
+                    # Return inactive but with data
+                    return {
+                        'active': False,
+                        'level': None,
+                        'message': None,
+                        'dollar_change_3m_pct': dollar_change_3m * 100,
+                        'current_dollar_index': dollar_index,
+                        'dollar_3m_ago': dollar_3m_ago,
+                        'swap_lines_outstanding': swap_lines,
+                        'swap_lines_elevated': swap_lines_elevated if swap_lines is not None else None
+                    }
+
+            except Exception as e:
+                logger.error(f"Error checking dollar liquidity stress: {e}")
+
+        # Return with current data only
+        return {
+            'active': False,
+            'level': None,
+            'message': None,
+            'current_dollar_index': dollar_index,
+            'dollar_3m_ago': None,
+            'dollar_change_3m_pct': None,
+            'swap_lines_outstanding': swap_lines
         }
 
     def _get_risk_tier(self, score: float) -> str:

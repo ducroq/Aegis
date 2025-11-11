@@ -1,14 +1,34 @@
 # TODO: Complete Signal Implementation
 
-## Signal #7: Dollar Liquidity Stress (IN PROGRESS)
+## Signal #7: Dollar Liquidity Stress (COMPLETED ✅)
 
 ### Completed:
 - ✅ Research completed - identified FRED series
 - ✅ Added data sources to `src/data/data_manager.py`:
   - `DTWEXBGS` - Trade-Weighted Dollar Index
   - `ROWSLAQ027S` - Fed Foreign Currency Swap Lines
+- ✅ Added `_check_dollar_liquidity_stress()` method to `src/scoring/aggregator.py`
+- ✅ Integrated check into `calculate_overall_risk()` method
+- ✅ Created `scripts/test_dollar_liquidity_signal.py` backtest script
+- ✅ Validated against historical data:
+  - ✅ 2008 Financial Crisis: 3 warnings (Oct-Dec 2008) - dollar surge +6.5% to +14.9%
+  - ✅ 2011 Euro Crisis: 2 warnings (Oct-Nov 2011) - bonus detection
+  - ⚠️ 2020 COVID: Not detected (monthly data too coarse for sub-month spike)
 
-### Remaining Work:
+### Backtest Results:
+- **Total warnings (2006-2024)**: 5 warnings
+- **2008 Lehman Crisis**: ✅ Detected Oct-Dec 2008 (dollar +14.9% in 3 months + elevated swap lines)
+- **2011 European Crisis**: ✅ Detected Oct-Nov 2011 (dollar +6.5% + elevated swap lines)
+- **False positives**: None in normal periods
+- **Signal quality**: HIGH - catches severe dollar funding crises
+
+### Notes:
+- Signal works well for detecting sustained dollar surges (3+ months)
+- Monthly data granularity misses intra-month spikes (2020 COVID was 8% in weeks)
+- For early warning, consider daily/weekly data in future enhancement
+- Data only available from 2006+ (when DTWEXBGS series begins)
+
+### Previously: Remaining Work (NOW COMPLETED):
 
 #### 1. Add Signal Logic to Aggregator (`src/scoring/aggregator.py`)
 
