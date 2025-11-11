@@ -7,6 +7,7 @@ config/credentials/secrets.ini
 
 # Data files (can be large, regenerate from APIs)
 data/history/
+!data/history/risk_scores.csv  # Exception: dashboard needs this CSV
 data/cache/
 data/history_test/
 
