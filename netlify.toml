@@ -1,0 +1,21 @@
+[build]
+  # No build command needed - we're serving static files
+  publish = "dashboard"
+
+[[headers]]
+  # Cache control for HTML
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  # CORS headers for CSV fetching from GitHub
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+
+[[redirects]]
+  # Redirect root to index.html
+  from = "/"
+  to = "/index.html"
+  status = 200

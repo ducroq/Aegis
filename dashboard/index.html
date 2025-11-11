@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis - Portfolio Risk Dashboard</title>
+
+    <!-- Plotly.js for charts -->
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            flex: 1;
+            min-width: 200px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .status-label {
+            font-size: 0.85em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .status-value.green { color: #10b981; }
+        .status-value.yellow { color: #f59e0b; }
+        .status-value.red { color: #ef4444; }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .chart-container.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .error {
+            background: #fee;
+            border: 2px solid #f00;
+            padding: 20px;
+            border-radius: 8px;
+            color: #c00;
+            margin: 20px 0;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+            opacity: 0.9;
+        }
+
+        footer a {
+            color: white;
+            text-decoration: none;
+            border-bottom: 1px solid white;
+        }
+
+        .last-updated {
+            font-size: 0.9em;
+            color: white;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ Aegis Portfolio Risk Dashboard</h1>
+            <p class="subtitle">Real-time macro risk monitoring for defensive portfolio positioning</p>
+
+            <div class="status-bar" id="statusBar">
+                <div class="status-item">
+                    <div class="status-label">Current Risk Score</div>
+                    <div class="status-value" id="currentRisk">--</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Risk Tier</div>
+                    <div class="status-value" id="riskTier">--</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Last Updated</div>
+                    <div class="status-value" id="lastUpdated" style="font-size: 1.2em;">--</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="loading" id="loading">Loading risk data from GitHub...</div>
+        <div class="error" id="error" style="display: none;"></div>
+
+        <div id="charts" style="display: none;">
+            <div class="chart-grid">
+                <div class="chart-container full-width">
+                    <div class="chart-title">Overall Risk Score Over Time</div>
+                    <div id="riskTimeline"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Dimension Breakdown (Current)</div>
+                    <div id="dimensionRadar"></div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart-title">Risk Distribution</div>
+                    <div id="dimensionBars"></div>
+                </div>
+
+                <div class="chart-container full-width">
+                    <div class="chart-title">Historical Dimensions</div>
+                    <div id="dimensionTimeline"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with <a href="https://github.com/ducroq/Aegis" target="_blank">Aegis</a> - Open source macro risk monitoring</p>
+            <p class="last-updated" id="footerUpdate"></p>
+        </footer>
+    </div>
+
+    <script>
+        // Configuration
+        const GITHUB_CSV_URL = 'https://raw.githubusercontent.com/ducroq/Aegis/master/data/history/risk_scores.csv';
+
+        // Fetch and parse CSV data
+        async function loadData() {
+            try {
+                const response = await fetch(GITHUB_CSV_URL);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+                }
+
+                const csvText = await response.text();
+
+                // Parse CSV
+                const parsed = Papa.parse(csvText, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true
+                });
+
+                if (parsed.errors.length > 0) {
+                    console.error('CSV parsing errors:', parsed.errors);
+                }
+
+                const data = parsed.data;
+
+                if (data.length === 0) {
+                    throw new Error('No data found in CSV file');
+                }
+
+                return data;
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = `Error: ${error.message}. Check console for details.`;
+                throw error;
+            }
+        }
+
+        function getRiskTier(score) {
+            if (score >= 8.0) return { tier: 'RED', color: '#ef4444' };
+            if (score >= 6.5) return { tier: 'YELLOW', color: '#f59e0b' };
+            return { tier: 'GREEN', color: '#10b981' };
+        }
+
+        function updateStatusBar(data) {
+            const latest = data[data.length - 1];
+            const riskScore = latest.overall_risk;
+            const { tier, color } = getRiskTier(riskScore);
+
+            document.getElementById('currentRisk').textContent = riskScore.toFixed(2);
+            document.getElementById('currentRisk').style.color = color;
+
+            document.getElementById('riskTier').textContent = tier;
+            document.getElementById('riskTier').style.color = color;
+
+            document.getElementById('lastUpdated').textContent = latest.date;
+            document.getElementById('footerUpdate').textContent = `Data as of ${latest.date}`;
+        }
+
+        function createRiskTimeline(data) {
+            const dates = data.map(d => d.date);
+            const scores = data.map(d => d.overall_risk);
+
+            // Create color array based on risk tier
+            const colors = scores.map(score => {
+                const { color } = getRiskTier(score);
+                return color;
+            });
+
+            const trace = {
+                x: dates,
+                y: scores,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Risk Score',
+                line: {
+                    color: '#667eea',
+                    width: 3
+                },
+                marker: {
+                    size: 6,
+                    color: colors
+                },
+                hovertemplate: '<b>%{x}</b><br>Risk: %{y:.2f}/10<extra></extra>'
+            };
+
+            // Add threshold lines
+            const yellowLine = {
+                x: dates,
+                y: Array(dates.length).fill(6.5),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Yellow Threshold',
+                line: { color: '#f59e0b', width: 1, dash: 'dash' },
+                hoverinfo: 'skip'
+            };
+
+            const redLine = {
+                x: dates,
+                y: Array(dates.length).fill(8.0),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Red Threshold',
+                line: { color: '#ef4444', width: 1, dash: 'dash' },
+                hoverinfo: 'skip'
+            };
+
+            const layout = {
+                height: 400,
+                margin: { t: 20, r: 20, b: 60, l: 60 },
+                xaxis: {
+                    title: 'Date',
+                    showgrid: true,
+                    gridcolor: '#f0f0f0'
+                },
+                yaxis: {
+                    title: 'Risk Score (0-10)',
+                    range: [0, 10],
+                    showgrid: true,
+                    gridcolor: '#f0f0f0'
+                },
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: -0.2
+                },
+                hovermode: 'x unified'
+            };
+
+            Plotly.newPlot('riskTimeline', [trace, yellowLine, redLine], layout, {responsive: true});
+        }
+
+        function createDimensionRadar(data) {
+            const latest = data[data.length - 1];
+
+            const dimensions = ['Recession', 'Credit', 'Valuation', 'Liquidity', 'Positioning'];
+            const values = [
+                latest.recession || 0,
+                latest.credit || 0,
+                latest.valuation || 0,
+                latest.liquidity || 0,
+                latest.positioning || 0
+            ];
+
+            const trace = {
+                type: 'scatterpolar',
+                r: values,
+                theta: dimensions,
+                fill: 'toself',
+                fillcolor: 'rgba(102, 126, 234, 0.3)',
+                line: {
+                    color: '#667eea',
+                    width: 2
+                },
+                marker: {
+                    size: 8,
+                    color: '#667eea'
+                },
+                hovertemplate: '<b>%{theta}</b><br>Score: %{r:.2f}/10<extra></extra>'
+            };
+
+            const layout = {
+                height: 400,
+                margin: { t: 40, r: 80, b: 40, l: 80 },
+                polar: {
+                    radialaxis: {
+                        visible: true,
+                        range: [0, 10],
+                        tickvals: [0, 2, 4, 6, 8, 10]
+                    }
+                },
+                showlegend: false
+            };
+
+            Plotly.newPlot('dimensionRadar', [trace], layout, {responsive: true});
+        }
+
+        function createDimensionBars(data) {
+            const latest = data[data.length - 1];
+
+            const dimensions = ['Recession', 'Credit', 'Valuation', 'Liquidity', 'Positioning'];
+            const values = [
+                latest.recession || 0,
+                latest.credit || 0,
+                latest.valuation || 0,
+                latest.liquidity || 0,
+                latest.positioning || 0
+            ];
+
+            const colors = values.map(v => {
+                const { color } = getRiskTier(v);
+                return color;
+            });
+
+            const trace = {
+                x: dimensions,
+                y: values,
+                type: 'bar',
+                marker: {
+                    color: colors,
+                    line: {
+                        color: '#333',
+                        width: 1
+                    }
+                },
+                hovertemplate: '<b>%{x}</b><br>Score: %{y:.2f}/10<extra></extra>'
+            };
+
+            const layout = {
+                height: 400,
+                margin: { t: 20, r: 20, b: 80, l: 60 },
+                xaxis: {
+                    title: 'Dimension',
+                    tickangle: -45
+                },
+                yaxis: {
+                    title: 'Risk Score (0-10)',
+                    range: [0, 10]
+                },
+                showlegend: false
+            };
+
+            Plotly.newPlot('dimensionBars', [trace], layout, {responsive: true});
+        }
+
+        function createDimensionTimeline(data) {
+            const dates = data.map(d => d.date);
+
+            const traces = [
+                {
+                    name: 'Recession',
+                    x: dates,
+                    y: data.map(d => d.recession || null),
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { width: 2 }
+                },
+                {
+                    name: 'Credit',
+                    x: dates,
+                    y: data.map(d => d.credit || null),
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { width: 2 }
+                },
+                {
+                    name: 'Valuation',
+                    x: dates,
+                    y: data.map(d => d.valuation || null),
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { width: 2 }
+                },
+                {
+                    name: 'Liquidity',
+                    x: dates,
+                    y: data.map(d => d.liquidity || null),
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { width: 2 }
+                },
+                {
+                    name: 'Positioning',
+                    x: dates,
+                    y: data.map(d => d.positioning || null),
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: { width: 2 }
+                }
+            ];
+
+            const layout = {
+                height: 400,
+                margin: { t: 20, r: 20, b: 60, l: 60 },
+                xaxis: {
+                    title: 'Date',
+                    showgrid: true,
+                    gridcolor: '#f0f0f0'
+                },
+                yaxis: {
+                    title: 'Risk Score (0-10)',
+                    range: [0, 10],
+                    showgrid: true,
+                    gridcolor: '#f0f0f0'
+                },
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: -0.2
+                },
+                hovermode: 'x unified'
+            };
+
+            Plotly.newPlot('dimensionTimeline', traces, layout, {responsive: true});
+        }
+
+        // Main execution
+        async function init() {
+            try {
+                const data = await loadData();
+
+                // Hide loading, show charts
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('charts').style.display = 'block';
+
+                // Update status bar
+                updateStatusBar(data);
+
+                // Create all charts
+                createRiskTimeline(data);
+                createDimensionRadar(data);
+                createDimensionBars(data);
+                createDimensionTimeline(data);
+
+                console.log('Dashboard loaded successfully!', data.length, 'data points');
+
+            } catch (error) {
+                console.error('Failed to initialize dashboard:', error);
+            }
+        }
+
+        // Load on page ready
+        init();
+    </script>
+</body>
+</html>
