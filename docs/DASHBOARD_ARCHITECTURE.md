@@ -163,21 +163,33 @@ git push
 
 ### Migration Path
 
-If we need more features later:
+**See detailed upgrade guide**: `docs/DASHBOARD_UPGRADE_PATH.md`
 
-**Easy additions** (stay with Option A+):
-- Add more charts (just edit HTML)
-- Change color scheme (CSS tweaks)
-- Multiple CSV files (fetch multiple)
+The dashboard JavaScript has been refactored into modular components (Dec 2024) to make future migrations easier. Each module (DataLoader, ChartRenderer, RiskCalculator, etc.) can be converted to React components with minimal changes.
 
-**Requires migration to Option B**:
+**Quick summary of upgrade options**:
+
+**Stay with Option A+** (current):
+- Monthly/weekly data updates
+- CSV < 1MB (~2,000 data points)
+- Simple visualizations
+- Personal use
+
+**Upgrade to Hugo** (Option C):
+- Need content management (blog, docs)
+- SEO optimization
+- Multi-page structure
+- Migration time: 2-3 hours
+
+**Upgrade to React + Functions** (Option B):
 - Custom date range filtering
+- Advanced interactivity
+- Large datasets (>1MB)
 - User authentication
-- Large datasets (>1MB CSV)
-- Real-time data updates
-- Database integration
+- Real-time updates
+- Migration time: 8-16 hours
 
-Migration is straightforward - charts/CSS can be reused in React.
+For step-by-step migration guides, decision frameworks, and code reuse examples, see `DASHBOARD_UPGRADE_PATH.md`.
 
 ## Validation
 
@@ -205,9 +217,11 @@ This meets 100% of MVP requirements.
 
 ### Files
 
-- `dashboard/index.html` - Single-file dashboard (815 lines)
-- `netlify.toml` - Deployment configuration
+- `dashboard/index.html` - Dashboard HTML (207 lines, refactored Dec 2024)
+- `dashboard/js/dashboard.js` - Modular JavaScript (396 lines)
+- `netlify.toml` - Deployment config with security headers
 - `dashboard/README.md` - Deployment guide
+- `docs/DASHBOARD_UPGRADE_PATH.md` - Future migration guide
 
 ### Technologies
 
