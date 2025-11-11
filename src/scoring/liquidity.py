@@ -87,30 +87,42 @@ class LiquidityScorer:
         """
         Score Fed funds rate trajectory (rate of change).
 
-        Rapid tightening = liquidity stress.
+        BOTH rapid tightening AND panic easing = liquidity stress/crisis.
 
         Args:
             velocity: 6-month rate of change in percentage points
         """
         signal = None
 
-        if velocity > 2.0:
-            # Rapid tightening (>2pp in 6 months)
+        # Use absolute value - BOTH extremes signal stress
+        abs_velocity = abs(velocity)
+
+        if abs_velocity > 50:
+            # Extreme panic (emergency cuts like 2008: -90pp)
             score = 4.0
-            signal = f"CRITICAL: Fed rapidly tightening ({velocity:+.1f}pp in 6 months)"
-        elif velocity > 1.0:
-            # Moderate tightening
+            if velocity < 0:
+                signal = f"CRITICAL: Fed emergency easing, crisis mode ({velocity:+.1f}pp in 6 months)"
+            else:
+                signal = f"CRITICAL: Fed extreme tightening ({velocity:+.1f}pp in 6 months)"
+        elif abs_velocity > 20:
+            # Major policy shift
+            score = 3.0
+            if velocity < 0:
+                signal = f"WARNING: Fed panic easing ({velocity:+.1f}pp in 6 months)"
+            else:
+                signal = f"WARNING: Fed aggressive tightening ({velocity:+.1f}pp in 6 months)"
+        elif abs_velocity > 10:
+            # Significant shift
             score = 2.0
-            signal = f"WARNING: Fed tightening policy ({velocity:+.1f}pp in 6 months)"
-        elif velocity > 0.5:
-            # Gradual tightening
+            if velocity < 0:
+                signal = f"WATCH: Fed rapid easing, stress evident ({velocity:+.1f}pp)"
+            else:
+                signal = f"WATCH: Fed rapid tightening ({velocity:+.1f}pp)"
+        elif abs_velocity > 5:
+            # Moderate shift
             score = 1.0
-            signal = f"WATCH: Fed gradually tightening ({velocity:+.1f}pp)"
-        elif velocity < -1.0:
-            # Emergency easing (negative score = good for markets, but may signal crisis)
-            score = 0.0  # Don't penalize emergency easing
         else:
-            # Stable or gradual easing
+            # Stable policy
             score = 0.0
 
         logger.debug(f"Fed trajectory: {velocity:+.1f}pp → score {score:.1f}")
@@ -120,7 +132,8 @@ class LiquidityScorer:
         """
         Score M2 money supply growth.
 
-        Contraction or very low growth = liquidity stress.
+        BOTH contraction AND excessive expansion signal stress.
+        Contraction = tight liquidity, excessive growth = panic money printing.
 
         Args:
             yoy_growth: Year-over-year M2 growth percentage
@@ -139,8 +152,20 @@ class LiquidityScorer:
             # Below normal growth (normal ~6%)
             score = 1.0
             signal = f"WATCH: M2 growth below normal ({yoy_growth:.1f}% YoY)"
+        elif yoy_growth > 15:
+            # Excessive money printing (crisis response)
+            score = 3.0
+            signal = f"CRITICAL: M2 surging, panic money printing ({yoy_growth:.1f}% YoY)"
+        elif yoy_growth > 10:
+            # High growth (potential crisis response)
+            score = 2.0
+            signal = f"WARNING: M2 growth elevated ({yoy_growth:.1f}% YoY)"
+        elif yoy_growth > 8:
+            # Above normal
+            score = 1.0
+            signal = f"WATCH: M2 growth above normal ({yoy_growth:.1f}% YoY)"
         else:
-            # Normal or high growth
+            # Normal growth (4-8%)
             score = 0.0
 
         logger.debug(f"M2 growth: {yoy_growth:.1f}% YoY → score {score:.1f}")

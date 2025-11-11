@@ -1,5 +1,29 @@
 # Aegis Risk Scoring Methodology
 
+**UPDATED 2025-11-09**: After 2000-2024 backtest, implemented hybrid leading + coincident system.
+
+## Core Philosophy: Dual-Indicator Approach
+
+**LEADING Signal (Valuation)**: Detects bubble conditions months before crashes
+**COINCIDENT Signal (Macro)**: Confirms crises as they unfold
+**OVERLAY Signal (Qualitative)**: Detects regime shifts via news scanning
+
+### Why Hybrid?
+
+**Discovery from Backtest:**
+- Pure macro indicators are COINCIDENT (lag by 9-18 months after market peaks)
+- Credit spreads widen DURING panic, unemployment rises AFTER layoffs
+- Valuation extremes build BEFORE crashes (months of lead time)
+
+**Solution:**
+1. **Valuation warnings** (CAPE + Buffett) for early warning of bubble peaks
+2. **Macro scoring** (credit/recession/liquidity) for crisis confirmation
+3. **Combined alerts** for nuanced decision-making
+
+See `docs/backtest_results.md` and `docs/valuation_warnings.md` for empirical validation.
+
+---
+
 ## Core Philosophy: Data-First, News-Second
 
 **Primary Signal**: Quantitative economic indicators with rate-of-change emphasis
@@ -465,3 +489,113 @@ With these refinements, backtest scenarios to validate:
 ---
 
 **Result**: A more predictive quantitative core with a streamlined, rule-based qualitative overlay that maintains objectivity while capturing regime shifts.
+
+---
+
+## Implemented Special Signals (2025-11)
+
+Beyond the core 5-dimension scoring, Aegis includes special warning signals that detect specific risk conditions:
+
+### Signal #1: Double Inversion Warning
+
+**Trigger Condition**: Yield curve inverted (-0.1% or worse) AND credit stress elevated (HY spreads ≥5.0%)
+
+**Risk Level**: HIGH
+
+**Message**: "DOUBLE INVERSION WARNING: Yield curve inverted AND credit stress elevated. Historical precedent: 2007-2008 Financial Crisis. Recession signal + funding stress = severe risk."
+
+**Rationale**: When recession signals (inverted yield curve) combine with funding stress (elevated credit spreads), the probability of severe market stress is extremely high. This combination preceded the 2007-2008 financial crisis.
+
+**Implementation**: `src/scoring/aggregator.py:_check_double_inversion()`
+
+---
+
+### Signal #2: Real Rate Warning
+
+**Trigger Condition**: Real interest rate > 1.0% AND rising rapidly (>10% in 6 months)
+
+**Risk Level**: HIGH
+
+**Message**: "REAL RATE WARNING: Fed tightening aggressively. Real rate X.X% (Fed Y.Y% - Inflation Z.Z%) and rising rapidly (+W.W% in 6 months). Historical precedent: 2022 bear market (-25%), 1994 bond sell-off, 2018 Q4 (-20%). Fed headwind can cause selloff even without recession."
+
+**Rationale**: Rapidly rising real interest rates (Fed funds minus inflation) create a headwind for asset valuations. Even without recession, aggressive Fed tightening can cause significant market corrections (2022 bear market, 1994 bond selloff, 2018 Q4).
+
+**Key Insight**: This signal catches market stress from monetary policy tightening that occurs WITHOUT recession - a distinct risk scenario.
+
+**Implementation**: `src/scoring/aggregator.py:_check_real_rate_warning()`
+
+---
+
+### Signal #3: Valuation Extreme Warning
+
+**Trigger Condition**: CAPE ratio ≥35 OR Buffett Indicator ≥140%
+
+**Risk Level**: HIGH
+
+**Message**: "VALUATION WARNING: Market at extreme levels (CAPE=X.X, Buffett Indicator=Y%). Historical precedent: Dot-com (2000), COVID peak (2020). Consider building cash position incrementally."
+
+**Rationale**: Extreme valuation levels have historically preceded major market corrections. While valuation alone doesn't predict timing, it indicates elevated risk of sharp declines when catalysts emerge.
+
+**Historical Examples**:
+- Dot-com bubble (2000): CAPE ~44, subsequent -49% decline
+- COVID peak (2020): CAPE ~38, subsequent -34% decline
+- Pre-GFC (2007): Buffett Indicator ~140%, subsequent -57% decline
+
+**Implementation**: `src/scoring/aggregator.py:_check_valuation_warning()`
+
+---
+
+### Signal #4: Earnings Recession Warning
+
+**Trigger Condition**: Trailing 12-month earnings declined >10% over past 12 months
+
+**Risk Level**: HIGH
+
+**Message**: "EARNINGS RECESSION WARNING: Trailing 12M earnings declining sharply. 12-month earnings change: X.X% (from $Y.YY to $Z.ZZ). Historical precedent: 2001-2002 tech crash, 2008-2009 financial crisis, 2015-2016 energy collapse. Profit pressure can cause market selloff even without GDP recession."
+
+**Data Source**: Shiller CAPE dataset - Trailing 12-month real earnings
+
+**IMPORTANT CAVEAT**: This signal uses **TRAILING earnings** (historical actual earnings, NOT forward estimates). This is a **LAGGING indicator** that detects earnings recessions DURING the decline, not predictively. Forward earnings estimates are not available historically for backtesting.
+
+**Rationale**: Periods of significant earnings decline often cause market stress even without official GDP recessions. Corporate profit pressure reduces valuations and can trigger selloffs.
+
+**Historical Examples**:
+- 2001-2002: Post-tech bubble earnings collapse
+- 2008-2009: Financial crisis earnings decline
+- 2015-2016: Energy/industrial earnings recession (no GDP recession)
+
+**Implementation**: `src/scoring/aggregator.py:_check_earnings_recession()`
+
+**Code Location**: `src/data/shiller.py:get_trailing_earnings_as_of()` - Extracts trailing earnings from Shiller CAPE dataset
+
+---
+
+### Signal #5: Housing Bubble Warning
+
+**Trigger Condition**: Median home prices rising >20% YoY AND mortgage rates <4% AND new home sales accelerating
+
+**Risk Level**: HIGH
+
+**Message**: "HOUSING BUBBLE WARNING: Home prices surging (+X.X% YoY), mortgage rates at Y.Y%, new home sales accelerating. Historical precedent: 2005-2007 housing bubble. Unsustainable price acceleration can reverse sharply when rates rise or lending tightens."
+
+**Rationale**: Rapid home price appreciation combined with low rates and accelerating sales often indicates a housing bubble. When conditions reverse (rates rise or credit tightens), housing corrections can spillover to broader economy.
+
+**Historical Example**: 2005-2007 housing bubble preceded the 2008 financial crisis
+
+**Implementation**: `src/scoring/aggregator.py:_check_housing_bubble()`
+
+---
+
+### Signal Integration
+
+All special signals are checked during risk aggregation and included in warning messages when active. Multiple signals can trigger simultaneously, indicating elevated multi-dimensional risk.
+
+**Example Combined Warning** (March 2000):
+- Signal #3: VALUATION WARNING (CAPE ~44)
+- Signal #1: DOUBLE INVERSION WARNING (yield curve + credit stress)
+
+**Example Combined Warning** (2022):
+- Signal #2: REAL RATE WARNING (Fed tightening aggressively)
+- Signal #3: VALUATION WARNING (CAPE ~35)
+
+These signals provide specific, actionable context beyond the numerical risk score, helping users understand the TYPE of risk environment they're facing.

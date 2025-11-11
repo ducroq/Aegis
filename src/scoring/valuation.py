@@ -27,7 +27,7 @@ class ValuationScorer:
         Args:
             indicators: Dict with valuation indicators:
                 - shiller_cape: Shiller CAPE ratio
-                - wilshire_5000: Wilshire 5000 index
+                - sp500_market_cap: S&P 500 market cap (proxy for Wilshire 5000)
                 - gdp: US GDP (for Buffett indicator)
                 - sp500_forward_pe: S&P 500 forward P/E
 
@@ -51,10 +51,10 @@ class ValuationScorer:
             components['cape'] = None
 
         # 2. Buffett Indicator (40% of valuation score)
-        wilshire = indicators.get('wilshire_5000')
-        gdp = indicators.get('gdp')
-        if wilshire is not None and gdp is not None:
-            buffett_score, buffett_signal = self._score_buffett_indicator(wilshire, gdp)
+        # FRED series DDDM01USA156NWDB is already Market Cap / GDP as percentage
+        buffett_ratio = indicators.get('sp500_market_cap')  # Actually Buffett indicator %
+        if buffett_ratio is not None:
+            buffett_score, buffett_signal = self._score_buffett_ratio(buffett_ratio)
             score += buffett_score
             components['buffett_indicator'] = buffett_score
             if buffett_signal:
@@ -85,34 +85,48 @@ class ValuationScorer:
         }
 
     def _score_cape(self, cape: float) -> tuple[float, Optional[str]]:
-        """Score Shiller CAPE ratio (historical avg ~16-17)."""
+        """
+        Score Shiller CAPE ratio.
+
+        CALIBRATED THRESHOLDS (from 2000-2024 historical data):
+        - Normal p90: 31.23
+        - Pre-crash median: 36.94
+        - Pre-crash max: 43.77
+
+        Historical average: ~16-17, but markets have been structurally higher since 2000s.
+        """
         signal = None
 
-        if cape > 35:
+        # Calibrated thresholds based on 2000-2024 data
+        if cape > 40:
             # Extreme bubble (dot-com levels)
             score = 4.0
             signal = f"CRITICAL: CAPE at bubble levels ({cape:.1f}, historical avg ~17)"
-        elif cape > 30:
-            # Very elevated
-            score = 3.0
+        elif cape > 35:
+            # Very elevated (pre-crash levels)
+            score = 3.5
             signal = f"WARNING: CAPE very elevated ({cape:.1f})"
-        elif cape > 25:
-            # Elevated
-            score = 2.0
+        elif cape > 30:
+            # Elevated (above normal p90)
+            score = 2.5
             signal = f"WATCH: CAPE elevated ({cape:.1f})"
-        elif cape > 20:
+        elif cape > 25:
             # Moderately high
             score = 1.0
         else:
-            # Normal to attractive
+            # Normal
             score = 0.0
 
         logger.debug(f"CAPE: {cape:.1f} → score {score:.1f}")
         return score, signal
 
-    def _score_buffett_indicator(self, market_cap: float, gdp: float) -> tuple[float, Optional[str]]:
-        """Score Market Cap / GDP ratio (Buffett's favorite indicator)."""
-        ratio = (market_cap / gdp) * 100  # Express as percentage
+    def _score_buffett_ratio(self, ratio: float) -> tuple[float, Optional[str]]:
+        """
+        Score Buffett Indicator (Market Cap / GDP ratio).
+
+        Args:
+            ratio: Market Cap / GDP as percentage (already calculated by FRED)
+        """
         signal = None
 
         if ratio > 200:

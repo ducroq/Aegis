@@ -28,8 +28,12 @@ scoring:
 # Alert configuration
 alerts:
   # Risk score thresholds (0-10 scale)
-  red_threshold: 8.0      # Severe risk
-  yellow_threshold: 6.5   # Elevated risk
+  # CALIBRATED from 2000-2024 backtest:
+  # - Crisis period max: 5.17 (2009), median: 3.60
+  # - Normal period 95th percentile: 3.60
+  # - Threshold 4.5: 12% crisis detection, 1.2% false positives
+  red_threshold: 5.0      # Severe risk (top crisis months)
+  yellow_threshold: 4.0   # Elevated risk (warning signal)
 
   # Trigger conditions
   rapid_rise_threshold: 1.0  # Point increase over trend_window that triggers alert

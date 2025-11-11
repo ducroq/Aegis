@@ -115,6 +115,56 @@ class ShillerDataClient:
             logger.error(f"Failed to get CAPE as of {as_of_date}: {e}")
             return None
 
+    def get_trailing_earnings_as_of(self, as_of_date: str, use_cache: bool = True, cache_ttl_days: int = 30) -> Optional[float]:
+        """
+        Get trailing 12-month real earnings as of a specific historical date.
+
+        NOTE: This returns TRAILING earnings (historical actual earnings, not forward estimates).
+        This is a LAGGING indicator - it reports past earnings performance.
+
+        Args:
+            as_of_date: Date to get earnings for (YYYY-MM-DD)
+            use_cache: Whether to use cached full dataset
+            cache_ttl_days: Cache time-to-live for full dataset
+
+        Returns:
+            Trailing 12M real earnings as of that date, or None if unavailable
+        """
+        try:
+            # Parse target date
+            target_date = pd.to_datetime(as_of_date)
+
+            # Load full historical dataset
+            df = self._load_full_dataset(use_cache, cache_ttl_days)
+            if df is None:
+                return None
+
+            # Check if Earnings column exists
+            if 'Earnings' not in df.columns:
+                logger.warning("Earnings data not available in Shiller dataset")
+                return None
+
+            # Filter to data available as of target date
+            # Earnings is monthly data, so we look for the most recent month <= target
+            df_filtered = df[df['Date'] <= target_date]
+
+            if len(df_filtered) == 0:
+                logger.warning(f"No earnings data available before {as_of_date}")
+                return None
+
+            # Get Earnings value
+            earnings_value = df_filtered['Earnings'].iloc[-1]
+
+            if pd.isna(earnings_value):
+                logger.warning(f"Earnings value is null for date near {as_of_date}")
+                return None
+
+            return float(earnings_value)
+
+        except Exception as e:
+            logger.error(f"Failed to get trailing earnings as of {as_of_date}: {e}")
+            return None
+
     def _load_full_dataset(self, use_cache: bool = True, cache_ttl_days: int = 30) -> Optional[pd.DataFrame]:
         """
         Load full Shiller CAPE historical dataset.
@@ -169,6 +219,14 @@ class ShillerDataClient:
                 logger.error(f"CAPE column not found. Available columns: {df.columns.tolist()}")
                 return None
 
+            # Find Earnings column (trailing 12-month earnings)
+            # NOTE: This is TRAILING earnings (historical, not forward estimates)
+            earnings_column = None
+            for col in ['E', 'Earnings', 'Real Earnings']:
+                if col in df.columns:
+                    earnings_column = col
+                    break
+
             # Find date column (usually first column or "Date")
             date_column = df.columns[0] if 'Date' not in df.columns else 'Date'
 
@@ -186,11 +244,21 @@ class ShillerDataClient:
                 except:
                     return pd.NaT
 
-            # Extract just Date and CAPE
-            df_clean = pd.DataFrame({
+            # Extract Date, CAPE, and Earnings (if available)
+            df_dict = {
                 'Date': df[date_column].apply(parse_shiller_date),
                 'CAPE': pd.to_numeric(df[cape_column], errors='coerce')
-            })
+            }
+
+            # Add Earnings column if found
+            # NOTE: Shiller Earnings = trailing 12-month real earnings (LAGGING indicator)
+            if earnings_column is not None:
+                df_dict['Earnings'] = pd.to_numeric(df[earnings_column], errors='coerce')
+                logger.info(f"Extracted Earnings column from Shiller data (trailing 12M)")
+            else:
+                logger.warning("Earnings column not found in Shiller data")
+
+            df_clean = pd.DataFrame(df_dict)
 
             # Drop rows with invalid dates or CAPE
             df_clean = df_clean.dropna(subset=['Date'])

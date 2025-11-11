@@ -123,9 +123,14 @@ class CreditScorer:
         """
         Score high-yield spread using velocity (70%) + level (30%).
 
+        CALIBRATED THRESHOLDS (from 2000-2024 historical data):
+        - Normal 90th percentile: 7.22%
+        - Crisis median: 7.67%
+        - Crisis max: 20.2%
+
         Args:
-            spread_level: Current HY spread in bps
-            spread_velocity: 20-day rate of change in bps/day
+            spread_level: Current HY spread in percentage points (e.g., 5.5 = 5.5%)
+            spread_velocity: 20-day rate of change in percentage points/day
 
         Returns:
             (score, signal): Score 0-6.0, optional signal message
@@ -134,53 +139,60 @@ class CreditScorer:
         level_score = 0.0
         signal = None
 
-        # Velocity scoring (0-4.2, then weighted by 0.7 = 0-2.94... rounds to 0-6.0 total)
+        # Velocity scoring (0-6.0 max)
+        # Calibrated: normal p90 = 0.02%/day, crisis p90 = 0.19%/day
         if spread_velocity is not None:
-            if spread_velocity > 10.0:
-                # Rapidly widening (>10 bps/day)
+            if spread_velocity > 0.10:
+                # Rapidly widening (>0.10%/day = 2% per month)
                 velocity_score = 6.0  # Max velocity score
-                signal = f"CRITICAL: HY spreads widening rapidly ({spread_velocity:.1f} bps/day)"
-            elif spread_velocity > 5.0:
-                # Moderate widening (5-10 bps/day)
-                velocity_score = 3.0
-                signal = f"WARNING: HY spreads widening ({spread_velocity:.1f} bps/day)"
-            elif spread_velocity > 2.0:
-                # Slight widening (2-5 bps/day)
-                velocity_score = 1.5
-                signal = f"WATCH: HY spreads trending wider ({spread_velocity:.1f} bps/day)"
+                signal = f"CRITICAL: HY spreads widening rapidly ({spread_velocity:.2f}%/day)"
+            elif spread_velocity > 0.05:
+                # Moderate widening (0.05-0.10%/day)
+                velocity_score = 4.0
+                signal = f"WARNING: HY spreads widening ({spread_velocity:.2f}%/day)"
+            elif spread_velocity > 0.02:
+                # Slight widening (0.02-0.05%/day)
+                velocity_score = 2.0
+                signal = f"WATCH: HY spreads trending wider ({spread_velocity:.2f}%/day)"
             else:
                 # Stable or tightening
                 velocity_score = 0.0
 
-        # Level scoring (0-3.0)
+        # Level scoring (0-6.0 max)
+        # Calibrated: normal p75=5.71%, p90=7.22%, crisis median=7.67%, max=20.2%
         if spread_level is not None:
-            if spread_level > 800:
-                # Crisis levels (800+ bps)
-                level_score = 3.0
+            if spread_level > 12.0:
+                # Extreme crisis (>12%)
+                level_score = 6.0
                 if not signal:
-                    signal = f"CRITICAL: HY spreads at crisis levels ({spread_level:.0f} bps)"
-            elif spread_level > 600:
-                # Elevated stress (600-800 bps)
+                    signal = f"CRITICAL: HY spreads at extreme crisis levels ({spread_level:.1f}%)"
+            elif spread_level > 8.0:
+                # Crisis levels (8-12%)
+                level_score = 5.0
+                if not signal:
+                    signal = f"CRITICAL: HY spreads at crisis levels ({spread_level:.1f}%)"
+            elif spread_level > 7.0:
+                # High stress (7-8%, above normal p90)
+                level_score = 4.0
+                if not signal:
+                    signal = f"WARNING: HY spreads elevated ({spread_level:.1f}%)"
+            elif spread_level > 5.5:
+                # Moderate stress (5.5-7%, above normal p75)
                 level_score = 2.0
                 if not signal:
-                    signal = f"WARNING: HY spreads elevated ({spread_level:.0f} bps)"
-            elif spread_level > 400:
-                # Moderate stress (400-600 bps)
-                level_score = 1.0
-                if not signal:
-                    signal = f"WATCH: HY spreads moderately wide ({spread_level:.0f} bps)"
+                    signal = f"WATCH: HY spreads moderately wide ({spread_level:.1f}%)"
             else:
-                # Normal levels (<400 bps)
+                # Normal levels (<5.5%)
                 level_score = 0.0
 
-        # Combined score: velocity (70%) + level (30%)
-        # But if velocity is high, it can drive the full 6.0 score alone
+        # Combined score: use MAX of velocity and level (not weighted average)
+        # Rationale: Either rapid widening OR high absolute level = risk
         if spread_velocity is not None and spread_level is not None:
-            score = (velocity_score * 0.7) + (level_score * 0.3)
+            score = max(velocity_score, level_score)
         elif spread_velocity is not None:
-            score = velocity_score  # If only velocity available, use it directly
+            score = velocity_score
         elif spread_level is not None:
-            score = level_score * 2  # If only level available, scale it up
+            score = level_score
         else:
             score = 0.0
 
@@ -194,35 +206,46 @@ class CreditScorer:
         """
         Score investment-grade (BBB) spread.
 
+        CALIBRATED THRESHOLDS (from 2000-2024 historical data):
+        - Normal p90: 2.65%
+        - Crisis median: 2.36%
+        - Crisis max: 7.84%
+
         Args:
-            spread: BBB corporate bond spread in bps
+            spread: BBB corporate bond spread in percentage points
 
         Returns:
             (score, signal): Score 0-2.0, optional signal message
         """
         signal = None
 
-        if spread > 400:
-            # Extreme widening
+        # Calibrated thresholds based on percentages
+        if spread > 5.0:
+            # Extreme widening (>5%)
             score = 2.0
-            signal = f"CRITICAL: IG spreads at stress levels ({spread:.0f} bps)"
-        elif spread > 250:
-            # Elevated
+            signal = f"CRITICAL: IG spreads at stress levels ({spread:.1f}%)"
+        elif spread > 3.0:
+            # Elevated (>3%, above crisis median)
             score = 1.5
-            signal = f"WARNING: IG spreads elevated ({spread:.0f} bps)"
-        elif spread > 150:
-            # Moderate
+            signal = f"WARNING: IG spreads elevated ({spread:.1f}%)"
+        elif spread > 2.5:
+            # Moderate (>2.5%, above normal p90)
             score = 0.5
         else:
-            # Normal
+            # Normal (<2.5%)
             score = 0.0
 
-        logger.debug(f"IG spread: {spread:.0f} bps → score {score:.1f}")
+        logger.debug(f"IG spread: {spread:.1f}% → score {score:.1f}")
         return score, signal
 
     def _score_ted_spread(self, spread: float) -> tuple[float, Optional[str]]:
         """
         Score TED spread (LIBOR - Treasury).
+
+        CALIBRATED THRESHOLDS (from 2000-2024 historical data):
+        - Normal p90: 0.50%
+        - Crisis median: 0.58%
+        - Crisis max: 3.31%
 
         Args:
             spread: TED spread in percentage points
@@ -232,16 +255,20 @@ class CreditScorer:
         """
         signal = None
 
-        if spread > 2.0:
-            # Crisis levels (2008-style)
+        # Calibrated thresholds
+        if spread > 1.5:
+            # Extreme crisis (>1.5%)
             score = 1.0
             signal = f"CRITICAL: TED spread at crisis levels ({spread:.2f}%)"
-        elif spread > 1.0:
-            # Stress
-            score = 0.5
+        elif spread > 0.75:
+            # Stress (>0.75%)
+            score = 0.7
             signal = f"WARNING: TED spread elevated ({spread:.2f}%)"
+        elif spread > 0.50:
+            # Above normal p90
+            score = 0.3
         else:
-            # Normal
+            # Normal (<0.50%)
             score = 0.0
 
         logger.debug(f"TED spread: {spread:.2f}% → score {score:.1f}")

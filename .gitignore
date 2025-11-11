@@ -60,6 +60,7 @@ test-report.html
 .DS_Store
 Thumbs.db
 desktop.ini
+NUL
 
 # Logs
 logs/
@@ -72,3 +73,17 @@ logs/
 # Environment variables
 .env
 .env.local
+
+# Sandbox - experimental/scratch work (NOT committed)
+sandbox/              # General experimentation, prototypes
+scratch/              # Quick tests, temporary work
+playground/           # Testing new libraries/tools
+experiments/local/    # Local experiments (experiments/ root can be tracked for systematic work)
+notebooks/exploratory/  # Messy exploratory Jupyter notebooks
+
+# Experimental file patterns
+*.bak
+*.old
+*_backup.*
+*_test.*
+*_draft.*

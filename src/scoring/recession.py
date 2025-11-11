@@ -119,6 +119,11 @@ class RecessionScorer:
         """
         Score unemployment claims velocity (YoY % change).
 
+        CALIBRATED THRESHOLDS (from 2000-2024 historical data):
+        - Normal 90th percentile: 10.36%
+        - Crisis median: 11.31%
+        - Crisis max: 84.18%
+
         Leading indicator: Sudden spikes in claims precede recession.
 
         Args:
@@ -129,18 +134,22 @@ class RecessionScorer:
         """
         signal = None
 
-        if velocity_yoy > 15.0:
-            # Extreme spike (15%+ YoY) = severe warning
+        # Calibrated thresholds
+        if velocity_yoy > 30.0:
+            # Extreme spike (>30% YoY) = severe warning
             score = 4.0
             signal = f"CRITICAL: Unemployment claims spiking {velocity_yoy:+.1f}% YoY"
-        elif velocity_yoy > 8.0:
-            # Moderate spike (8-15% YoY) = elevated risk
-            score = 2.0
+        elif velocity_yoy > 15.0:
+            # Moderate spike (15-30% YoY) = elevated risk
+            score = 3.0
             signal = f"WARNING: Unemployment claims rising {velocity_yoy:+.1f}% YoY"
-        elif velocity_yoy > 3.0:
-            # Rising (3-8% YoY) = early warning
-            score = 1.0
+        elif velocity_yoy > 10.0:
+            # Rising (10-15% YoY, above normal p90) = early warning
+            score = 2.0
             signal = f"WATCH: Unemployment claims trending up {velocity_yoy:+.1f}% YoY"
+        elif velocity_yoy > 5.0:
+            # Slight rise (5-10% YoY)
+            score = 0.5
         else:
             # Stable or declining = low risk
             score = 0.0

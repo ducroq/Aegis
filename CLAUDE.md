@@ -101,14 +101,29 @@ Each dimension scored 0-10, then weighted average = overall risk score.
 
 ## Project Status
 
-**Current State:** Scaffold/skeleton phase. Configuration files, documentation, and directory structure are complete. Core implementation modules need to be built.
+**Current State:** Core system implemented with Signals #1-6 complete. Historical data backfill completed (300 months: 2000-2024).
+
+**✅ Completed:**
+- Core infrastructure (config, data fetchers, scoring engines)
+- Signals #1-6 implemented and tested
+- **Historical data backfill: 300 months (2000-01-01 to 2024-12-01)**
+  - `data/history/risk_scores.csv`: 301 rows, 8 columns
+  - `data/history/raw_indicators.csv`: 301 rows, 38 columns
+  - Zero failures, all CSV integrity checks passed
+- Risk aggregation and alert logic
+- Signal #4 (Earnings Recession) backtest script (`scripts/test_earnings_recession_signal.py`)
+- Incremental backfill script (`scripts/incremental_backfill.py`)
+
+**🔄 In Progress:**
+- Signal #7 (Dollar Liquidity Stress) - data sources added, logic pending (see `TODO_SIGNALS.md`)
+- Signal #10 (Retail Capitulation) - requires manual AAII data
 
 **Implementation Priority:**
-1. `src/config/config_manager.py` - Configuration loading system
-2. `src/data/` modules - Data fetchers (FRED, Yahoo Finance, Shiller)
-3. `src/scoring/` modules - Risk calculation engines
-4. `scripts/` - Daily update and reporting scripts
-5. `src/alerts/` - Alert logic and email delivery
+1. ✅ `src/config/config_manager.py` - COMPLETE
+2. ✅ `src/data/` modules - COMPLETE (FRED, Yahoo Finance, Shiller)
+3. ✅ `src/scoring/` modules - COMPLETE (Recession, Credit, Valuation, Liquidity, Positioning)
+4. ⏳ `scripts/` - Partial (backtest scripts done, daily/weekly pending)
+5. ⏳ `src/alerts/` - Partial (logic done, email delivery pending)
 
 ## Development Commands
 

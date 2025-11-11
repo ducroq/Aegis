@@ -103,7 +103,7 @@ class DataManager:
             'credit': self._fetch_credit_indicators_as_of(as_of_date),
             'valuation': self._fetch_valuation_indicators_as_of(as_of_date),
             'liquidity': self._fetch_liquidity_indicators_as_of(as_of_date),
-            'positioning': self._fetch_positioning_indicators(),  # Still stubbed
+            'positioning': self._fetch_positioning_indicators_as_of(as_of_date),
             'metadata': {
                 'fetch_timestamp': datetime.now().isoformat(),
                 'as_of_date': as_of_date,
@@ -185,6 +185,11 @@ class DataManager:
             'sp500_level': self.fred_client.get_latest_value('SP500'),
             # Denominator: GDP (quarterly, may be stale)
             'gdp': self.fred_client.get_latest_value('GDP'),
+
+            # Housing indicators (for Signal #5: Housing Bubble)
+            'new_home_sales': self.fred_client.get_latest_value('HSN1F'),  # New One Family Houses Sold
+            'mortgage_rate_30y': self.fred_client.get_latest_value('MORTGAGE30US'),  # 30-Year Fixed Rate
+            'median_home_price': self.fred_client.get_latest_value('MSPUS'),  # Median Sales Price
         }
 
     def _fetch_liquidity_indicators(self) -> Dict[str, Any]:
@@ -195,8 +200,12 @@ class DataManager:
             # Fed funds rate
             'fed_funds_rate': self.fred_client.get_latest_value('DFF'),
             'fed_funds_velocity_6m': self.fred_client.calculate_velocity(
-                'DFF', method='rate', lookback_days=180
+                'DFF', method='pct_change', lookback_days=180
             ),
+
+            # CPI inflation (for real interest rate calculation)
+            'cpi_inflation': self.fred_client.get_latest_value('CPIAUCSL'),
+            'cpi_inflation_yoy': self.fred_client.calculate_velocity('CPIAUCSL', method='yoy_pct'),
 
             # M2 money supply
             'm2_money_supply': self.fred_client.get_latest_value('M2SL'),
@@ -210,6 +219,10 @@ class DataManager:
 
             # VIX (market volatility) - use FRED to avoid Yahoo Finance rate limits
             'vix': self.fred_client.get_latest_value('VIXCLS'),
+
+            # Dollar liquidity indicators (Signal #7)
+            'dollar_index': self.fred_client.get_latest_value('DTWEXBGS'),  # Trade-weighted dollar index
+            'fed_swap_lines': self.fred_client.get_latest_value('ROWSLAQ027S'),  # Fed foreign currency swap lines
         }
 
     def _fetch_positioning_indicators(self) -> Dict[str, Any]:
@@ -263,21 +276,50 @@ class DataManager:
             'sp500_price': self.fred_client.get_value_as_of('SP500', as_of_date),
             'sp500_forward_pe': None,  # Historical forward P/E not available
             'shiller_cape': self.shiller_client.get_cape_as_of(as_of_date),
+            # NOTE: Shiller trailing earnings = 12M historical actual earnings (LAGGING indicator)
+            # This is NOT forward earnings - it reports past earnings, not future expectations
+            'shiller_trailing_earnings': self.shiller_client.get_trailing_earnings_as_of(as_of_date),
             'sp500_market_cap': self.fred_client.get_value_as_of('DDDM01USA156NWDB', as_of_date),
             'gdp': self.fred_client.get_value_as_of('GDP', as_of_date),
+            # Housing indicators
+            'new_home_sales': self.fred_client.get_value_as_of('HSN1F', as_of_date),
+            'mortgage_rate_30y': self.fred_client.get_value_as_of('MORTGAGE30US', as_of_date),
+            'median_home_price': self.fred_client.get_value_as_of('MSPUS', as_of_date),
         }
 
     def _fetch_liquidity_indicators_as_of(self, as_of_date: str) -> Dict[str, Any]:
         """Fetch liquidity indicators as of a specific date."""
         return {
             'fed_funds_rate': self.fred_client.get_value_as_of('DFF', as_of_date),
-            'fed_funds_velocity': self.fred_client.calculate_velocity_as_of(
-                'DFF', as_of_date, method='pct_change', lookback_days=90
+            'fed_funds_velocity_6m': self.fred_client.calculate_velocity_as_of(
+                'DFF', as_of_date, method='pct_change', lookback_days=180  # 6 months
+            ),
+            'cpi_inflation': self.fred_client.get_value_as_of('CPIAUCSL', as_of_date),
+            'cpi_inflation_yoy': self.fred_client.calculate_velocity_as_of(
+                'CPIAUCSL', as_of_date, method='yoy_pct'
             ),
             'm2_money_supply': self.fred_client.get_value_as_of('M2SL', as_of_date),
-            'm2_velocity': self.fred_client.get_value_as_of('M2V', as_of_date),
+            'm2_velocity_yoy': self.fred_client.calculate_velocity_as_of(
+                'M2SL', as_of_date, method='yoy_pct'
+            ),
             'vix': self.market_client.get_vix_as_of(as_of_date),
             'margin_debt': None,  # Not available historically
+            # Dollar liquidity indicators (Signal #7)
+            'dollar_index': self.fred_client.get_value_as_of('DTWEXBGS', as_of_date),
+            'fed_swap_lines': self.fred_client.get_value_as_of('ROWSLAQ027S', as_of_date),
+        }
+
+    def _fetch_positioning_indicators_as_of(self, as_of_date: str) -> Dict[str, Any]:
+        """
+        Fetch positioning indicators as of a specific date.
+
+        Note: CFTC data not implemented yet. Using VIX as proxy.
+        """
+        return {
+            'sp500_net_speculative': None,  # CFTC data not implemented
+            'treasury_net_speculative': None,  # CFTC data not implemented
+            'vix_net_speculative': None,  # CFTC data not implemented
+            'vix_proxy': self.fred_client.get_value_as_of('VIXCLS', as_of_date),
         }
 
     def _get_previous_value(self, series_id: str, periods_back: int = 1) -> Optional[float]:

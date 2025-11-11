@@ -70,12 +70,58 @@ class AlertLogic:
         current_score = current_result['overall_score']
         current_tier = current_result['tier']
         dimension_scores = current_result['dimension_scores']
+        valuation_warning = current_result.get('valuation_warning', {})
+        double_inversion_warning = current_result.get('double_inversion_warning', {})
+        real_rate_warning = current_result.get('real_rate_warning', {})
+        earnings_recession_warning = current_result.get('earnings_recession_warning', {})
+        housing_bubble_warning = current_result.get('housing_bubble_warning', {})
 
         details = {
             'current_score': current_score,
             'tier': current_tier,
-            'triggers': []
+            'triggers': [],
+            'valuation_warning': valuation_warning,
+            'double_inversion_warning': double_inversion_warning,
+            'real_rate_warning': real_rate_warning,
+            'earnings_recession_warning': earnings_recession_warning,
+            'housing_bubble_warning': housing_bubble_warning
         }
+
+        # Trigger 0a: Double Inversion Warning (recession + credit stress = severe)
+        # This takes priority over valuation warning due to severity
+        if double_inversion_warning.get('active', False):
+            details['triggers'].append('DOUBLE_INVERSION_WARNING')
+            reason = double_inversion_warning.get('message', 'Yield curve inverted + credit stress')
+            logger.warning(f"ALERT: {reason}")
+            return True, 'DOUBLE_INVERSION_WARNING', reason, details
+
+        # Trigger 0b: Valuation Warning (leading indicator - fires BEFORE macro deterioration)
+        if valuation_warning.get('active', False):
+            details['triggers'].append('VALUATION_WARNING')
+            reason = valuation_warning.get('message', 'Valuation extremes detected')
+            logger.warning(f"ALERT: {reason}")
+            return True, 'VALUATION_WARNING', reason, details
+
+        # Trigger 0c: Real Interest Rate Warning (Fed tightening - catches rate-driven selloffs)
+        if real_rate_warning.get('active', False):
+            details['triggers'].append('REAL_RATE_WARNING')
+            reason = real_rate_warning.get('message', 'Fed tightening aggressively')
+            logger.warning(f"ALERT: {reason}")
+            return True, 'REAL_RATE_WARNING', reason, details
+
+        # Trigger 0d: Earnings Recession Warning (profit decline without GDP recession)
+        if earnings_recession_warning.get('active', False):
+            details['triggers'].append('EARNINGS_RECESSION_WARNING')
+            reason = earnings_recession_warning.get('message', 'Corporate earnings declining sharply')
+            logger.warning(f"ALERT: {reason}")
+            return True, 'EARNINGS_RECESSION_WARNING', reason, details
+
+        # Trigger 0e: Housing Bubble Warning (housing market stress)
+        if housing_bubble_warning.get('active', False):
+            details['triggers'].append('HOUSING_BUBBLE_WARNING')
+            reason = housing_bubble_warning.get('message', 'Housing market freezing up')
+            logger.warning(f"ALERT: {reason}")
+            return True, 'HOUSING_BUBBLE_WARNING', reason, details
 
         # Trigger 1: RED threshold
         if current_score >= self.red_threshold:
