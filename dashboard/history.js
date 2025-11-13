@@ -227,9 +227,9 @@ const UIUpdater = {
 
 // Chart rendering
 const ChartRenderer = {
-    createRiskTimeline(data) {
-        const dates = data.map(d => d.date);
-        const scores = data.map(d => d.overall_risk);
+    createRiskTimeline(riskData, marketData) {
+        const dates = riskData.map(d => d.date);
+        const scores = riskData.map(d => d.overall_risk);
 
         // Color points based on tier
         const colors = scores.map(score => {
@@ -237,26 +237,71 @@ const ChartRenderer = {
             return color;
         });
 
-        const trace = {
+        // Get S&P 500 prices and calculate drawdowns
+        const sp500Prices = [];
+        const sp500Drawdowns = [];
+
+        for (const riskPoint of riskData) {
+            const matchingMarket = marketData.find(m => m.date === riskPoint.date);
+            if (matchingMarket && matchingMarket.valuation_sp500_price) {
+                sp500Prices.push(matchingMarket.valuation_sp500_price);
+            } else {
+                sp500Prices.push(null);
+            }
+        }
+
+        // Calculate rolling drawdown (% decline from peak)
+        let peak = 0;
+        for (let i = 0; i < sp500Prices.length; i++) {
+            if (sp500Prices[i] !== null) {
+                if (sp500Prices[i] > peak) {
+                    peak = sp500Prices[i];
+                }
+                const drawdown = ((sp500Prices[i] - peak) / peak) * 100;
+                sp500Drawdowns.push(drawdown);
+            } else {
+                sp500Drawdowns.push(null);
+            }
+        }
+
+        // Trace 1: S&P 500 Drawdown (right y-axis, shown first for background)
+        const drawdownTrace = {
+            x: dates,
+            y: sp500Drawdowns,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'S&P 500 Drawdown',
+            line: { color: 'rgba(16, 185, 129, 0.4)', width: 2 },
+            fill: 'tozeroy',
+            fillcolor: 'rgba(16, 185, 129, 0.1)',
+            yaxis: 'y2',
+            hovertemplate: '<b>%{x}</b><br>Drawdown: %{y:.1f}%<extra></extra>'
+        };
+
+        // Trace 2: Risk Score (left y-axis, shown on top)
+        const riskTrace = {
             x: dates,
             y: scores,
             type: 'scatter',
             mode: 'lines+markers',
-            line: { color: CONFIG.CHART_COLORS.PRIMARY, width: 2 },
+            name: 'Risk Score',
+            line: { color: CONFIG.CHART_COLORS.PRIMARY, width: 3 },
             marker: { size: 4, color: colors },
-            hovertemplate: '<b>%{x}</b><br>Risk: %{y:.2f}/10<extra></extra>',
-            name: 'Overall Risk'
+            yaxis: 'y1',
+            hovertemplate: '<b>%{x}</b><br>Risk: %{y:.2f}/10<extra></extra>'
         };
 
-        // Add threshold lines
+        // Threshold lines
         const yellowLine = {
             x: [dates[0], dates[dates.length - 1]],
             y: [CONFIG.RISK_THRESHOLDS.YELLOW, CONFIG.RISK_THRESHOLDS.YELLOW],
             type: 'scatter',
             mode: 'lines',
-            line: { color: CONFIG.CHART_COLORS.YELLOW, width: 2, dash: 'dash' },
-            name: 'YELLOW Threshold (4.0)',
-            hoverinfo: 'skip'
+            line: { color: CONFIG.CHART_COLORS.YELLOW, width: 1, dash: 'dash' },
+            name: 'YELLOW (4.0)',
+            yaxis: 'y1',
+            hoverinfo: 'skip',
+            showlegend: true
         };
 
         const redLine = {
@@ -264,9 +309,11 @@ const ChartRenderer = {
             y: [CONFIG.RISK_THRESHOLDS.RED, CONFIG.RISK_THRESHOLDS.RED],
             type: 'scatter',
             mode: 'lines',
-            line: { color: CONFIG.CHART_COLORS.RED, width: 2, dash: 'dash' },
-            name: 'RED Threshold (5.0)',
-            hoverinfo: 'skip'
+            line: { color: CONFIG.CHART_COLORS.RED, width: 1, dash: 'dash' },
+            name: 'RED (5.0)',
+            yaxis: 'y1',
+            hoverinfo: 'skip',
+            showlegend: true
         };
 
         // Filter events to only show those within the visible date range
@@ -297,21 +344,47 @@ const ChartRenderer = {
             text: event.label,
             showarrow: false,
             textangle: -90,
-            font: { size: 10, color: event.color }
+            font: { size: 10, color: event.color },
+            yref: 'y1'
         }));
 
         const layout = {
             height: 400,
-            margin: { t: 20, r: 20, b: 60, l: 60 },
-            xaxis: { title: 'Date', showgrid: true, gridcolor: '#f0f0f0' },
-            yaxis: { title: 'Risk Score', range: [0, 10], showgrid: true, gridcolor: '#f0f0f0' },
+            margin: { t: 40, r: 80, b: 60, l: 60 },
+            xaxis: {
+                title: 'Date',
+                showgrid: true,
+                gridcolor: '#f0f0f0'
+            },
+            yaxis: {
+                title: 'Risk Score (0-10)',
+                titlefont: { color: CONFIG.CHART_COLORS.PRIMARY },
+                tickfont: { color: CONFIG.CHART_COLORS.PRIMARY },
+                range: [0, 10],
+                showgrid: true,
+                gridcolor: '#f0f0f0'
+            },
+            yaxis2: {
+                title: 'S&P 500 Drawdown (%)',
+                titlefont: { color: 'rgba(16, 185, 129, 0.8)' },
+                tickfont: { color: 'rgba(16, 185, 129, 0.8)' },
+                overlaying: 'y',
+                side: 'right',
+                range: [-60, 5],
+                showgrid: false
+            },
             hovermode: 'x unified',
             shapes: eventShapes,
             annotations: eventAnnotations,
-            legend: { orientation: 'h', y: -0.2 }
+            legend: {
+                orientation: 'h',
+                y: 1.15,
+                x: 0.5,
+                xanchor: 'center'
+            }
         };
 
-        Plotly.newPlot('riskTimeline', [trace, yellowLine, redLine], layout, { responsive: true });
+        Plotly.newPlot('riskTimeline', [drawdownTrace, riskTrace, yellowLine, redLine], layout, { responsive: true });
     },
 
     createDimensionTimeline(data) {
@@ -485,127 +558,6 @@ const ChartRenderer = {
         Plotly.newPlot('correlationMatrix', [trace], layout, { responsive: true });
     },
 
-    createMarketVsRisk(riskData, marketData) {
-        // Match dates between risk and market data
-        const dates = riskData.map(d => d.date);
-        const riskScores = riskData.map(d => d.overall_risk);
-
-        // Get S&P 500 prices, filter to matching dates
-        const sp500Prices = [];
-        const sp500Drawdowns = [];
-
-        for (const riskPoint of riskData) {
-            const matchingMarket = marketData.find(m => m.date === riskPoint.date);
-            if (matchingMarket && matchingMarket.valuation_sp500_price) {
-                sp500Prices.push(matchingMarket.valuation_sp500_price);
-            } else {
-                sp500Prices.push(null);
-            }
-        }
-
-        // Calculate rolling drawdown (% decline from peak)
-        let peak = 0;
-        for (let i = 0; i < sp500Prices.length; i++) {
-            if (sp500Prices[i] !== null) {
-                if (sp500Prices[i] > peak) {
-                    peak = sp500Prices[i];
-                }
-                const drawdown = ((sp500Prices[i] - peak) / peak) * 100;
-                sp500Drawdowns.push(drawdown);
-            } else {
-                sp500Drawdowns.push(null);
-            }
-        }
-
-        // Trace 1: Risk Score (left y-axis)
-        const riskTrace = {
-            x: dates,
-            y: riskScores,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'Risk Score',
-            line: { color: CONFIG.CHART_COLORS.PRIMARY, width: 2 },
-            yaxis: 'y1',
-            hovertemplate: '<b>%{x}</b><br>Risk: %{y:.2f}/10<extra></extra>'
-        };
-
-        // Trace 2: S&P 500 Drawdown (right y-axis, inverted)
-        const drawdownTrace = {
-            x: dates,
-            y: sp500Drawdowns,
-            type: 'scatter',
-            mode: 'lines',
-            name: 'S&P 500 Drawdown',
-            line: { color: '#10b981', width: 2 },
-            fill: 'tozeroy',
-            fillcolor: 'rgba(16, 185, 129, 0.1)',
-            yaxis: 'y2',
-            hovertemplate: '<b>%{x}</b><br>Drawdown: %{y:.1f}%<extra></extra>'
-        };
-
-        // Add threshold lines for risk
-        const yellowLine = {
-            x: [dates[0], dates[dates.length - 1]],
-            y: [CONFIG.RISK_THRESHOLDS.YELLOW, CONFIG.RISK_THRESHOLDS.YELLOW],
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: CONFIG.CHART_COLORS.YELLOW, width: 1, dash: 'dash' },
-            name: 'YELLOW (4.0)',
-            yaxis: 'y1',
-            hoverinfo: 'skip',
-            showlegend: false
-        };
-
-        const redLine = {
-            x: [dates[0], dates[dates.length - 1]],
-            y: [CONFIG.RISK_THRESHOLDS.RED, CONFIG.RISK_THRESHOLDS.RED],
-            type: 'scatter',
-            mode: 'lines',
-            line: { color: CONFIG.CHART_COLORS.RED, width: 1, dash: 'dash' },
-            name: 'RED (5.0)',
-            yaxis: 'y1',
-            hoverinfo: 'skip',
-            showlegend: false
-        };
-
-        const layout = {
-            height: 400,
-            margin: { t: 40, r: 80, b: 60, l: 60 },
-            xaxis: {
-                title: 'Date',
-                showgrid: true,
-                gridcolor: '#f0f0f0',
-                domain: [0, 1]
-            },
-            yaxis: {
-                title: 'Risk Score (0-10)',
-                titlefont: { color: CONFIG.CHART_COLORS.PRIMARY },
-                tickfont: { color: CONFIG.CHART_COLORS.PRIMARY },
-                range: [0, 10],
-                showgrid: true,
-                gridcolor: '#f0f0f0'
-            },
-            yaxis2: {
-                title: 'S&P 500 Drawdown (%)',
-                titlefont: { color: '#10b981' },
-                tickfont: { color: '#10b981' },
-                overlaying: 'y',
-                side: 'right',
-                range: [-60, 5],  // Inverted: deeper drawdowns at bottom
-                showgrid: false
-            },
-            legend: {
-                orientation: 'h',
-                y: 1.1,
-                x: 0.5,
-                xanchor: 'center'
-            },
-            hovermode: 'x unified'
-        };
-
-        Plotly.newPlot('marketVsRisk', [drawdownTrace, riskTrace, yellowLine, redLine], layout, { responsive: true });
-    },
-
     createEventsTimeline(data) {
         const dates = data.map(d => d.date);
         const scores = data.map(d => d.overall_risk);
@@ -715,8 +667,7 @@ const TimeSelector = {
         const filteredData = TimeFilter.filterByPeriod(fullData, currentPeriod);
         const filteredMarketData = TimeFilter.filterByPeriod(fullMarketData, currentPeriod);
 
-        ChartRenderer.createRiskTimeline(filteredData);
-        ChartRenderer.createMarketVsRisk(filteredData, filteredMarketData);
+        ChartRenderer.createRiskTimeline(filteredData, filteredMarketData);
         ChartRenderer.createDimensionTimeline(filteredData);
         ChartRenderer.createAlertHistory(filteredData);
         ChartRenderer.displayStatsTable(filteredData);
@@ -741,8 +692,7 @@ const HistoryApp = {
             TimeSelector.init();
 
             // Render charts with full data
-            ChartRenderer.createRiskTimeline(fullData);
-            ChartRenderer.createMarketVsRisk(fullData, fullMarketData);
+            ChartRenderer.createRiskTimeline(fullData, fullMarketData);
             ChartRenderer.createDimensionTimeline(fullData);
             ChartRenderer.createAlertHistory(fullData);
             ChartRenderer.displayStatsTable(fullData);
