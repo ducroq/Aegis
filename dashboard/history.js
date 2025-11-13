@@ -231,10 +231,12 @@ const ChartRenderer = {
         const dates = riskData.map(d => d.date);
         const scores = riskData.map(d => d.overall_risk);
 
-        // Color points based on tier
-        const colors = scores.map(score => {
-            const { color } = RiskCalculator.getRiskTier(score);
-            return color;
+        // Color points based on tier column from CSV (includes liquidity override)
+        const colors = riskData.map(d => {
+            const tier = d.tier || 'GREEN';
+            if (tier === 'RED') return CONFIG.CHART_COLORS.RED;
+            if (tier === 'YELLOW') return CONFIG.CHART_COLORS.YELLOW;
+            return CONFIG.CHART_COLORS.GREEN;
         });
 
         // Get S&P 500 prices and calculate drawdowns
