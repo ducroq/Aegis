@@ -8,6 +8,8 @@ yfinance>=0.2.40        # Yahoo Finance market data
 # Data Processing
 pandas>=2.0.0           # Data manipulation and analysis
 numpy>=1.24.0           # Numerical computing
+xlrd>=2.0.1             # Excel file reading (for Shiller CAPE data)
+openpyxl>=3.1.0         # Modern Excel file support
 
 # Configuration & I/O
 PyYAML>=6.0             # YAML configuration files

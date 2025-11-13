@@ -34,16 +34,20 @@ jobs:
         run: |
           mkdir -p config/credentials
           cat > config/credentials/secrets.ini << EOF
-          [fred]
-          api_key = ${{ secrets.FRED_API_KEY }}
+          [api_keys]
+          fred_api_key = ${{ secrets.FRED_API_KEY }}
+          sendgrid_api_key =
 
-          [email]
-          # Email not needed for daily updates, only weekly reports
-          from_email =
-          smtp_server =
-          smtp_port =
-          smtp_username =
-          smtp_password =
+          [email_credentials]
+          sender_email =
+          sender_password =
+          recipient_email =
+          smtp_host = smtp.gmail.com
+          smtp_port = 587
+
+          [optional_apis]
+          alpha_vantage_key =
+          quandl_key =
           EOF
 
       - name: Run daily update
