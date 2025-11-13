@@ -244,8 +244,16 @@ const ChartRenderer = {
             hoverinfo: 'skip'
         };
 
-        // Add event markers
-        const eventShapes = CONFIG.MAJOR_EVENTS.map(event => ({
+        // Filter events to only show those within the visible date range
+        const startDate = new Date(dates[0]);
+        const endDate = new Date(dates[dates.length - 1]);
+        const visibleEvents = CONFIG.MAJOR_EVENTS.filter(event => {
+            const eventDate = new Date(event.date);
+            return eventDate >= startDate && eventDate <= endDate;
+        });
+
+        // Add event markers only for visible events
+        const eventShapes = visibleEvents.map(event => ({
             type: 'line',
             x0: event.date,
             x1: event.date,
@@ -258,7 +266,7 @@ const ChartRenderer = {
             }
         }));
 
-        const eventAnnotations = CONFIG.MAJOR_EVENTS.map(event => ({
+        const eventAnnotations = visibleEvents.map(event => ({
             x: event.date,
             y: 9,
             text: event.label,
@@ -468,56 +476,63 @@ const ChartRenderer = {
             hovertemplate: '<b>%{x}</b><br>Risk: %{y:.2f}/10<extra></extra>'
         };
 
-        // Add rectangles for major crisis periods
-        const shapes = [
-            // Dot-com crash (2000-2002)
+        // Define all crisis periods
+        const allCrisisPeriods = [
             {
-                type: 'rect',
                 x0: '2000-03-01',
                 x1: '2002-10-01',
-                y0: 0,
-                y1: 10,
-                fillcolor: 'rgba(239, 68, 68, 0.1)',
-                line: { width: 0 }
+                label: { x: '2001-03-01', text: 'Dot-Com<br>Crash' },
+                fillcolor: 'rgba(239, 68, 68, 0.1)'
             },
-            // Financial crisis (2007-2009)
             {
-                type: 'rect',
                 x0: '2007-10-01',
                 x1: '2009-03-01',
-                y0: 0,
-                y1: 10,
-                fillcolor: 'rgba(239, 68, 68, 0.1)',
-                line: { width: 0 }
+                label: { x: '2008-06-01', text: 'Financial<br>Crisis' },
+                fillcolor: 'rgba(239, 68, 68, 0.1)'
             },
-            // COVID crash (2020)
             {
-                type: 'rect',
                 x0: '2020-02-01',
                 x1: '2020-04-01',
-                y0: 0,
-                y1: 10,
-                fillcolor: 'rgba(239, 68, 68, 0.1)',
-                line: { width: 0 }
+                label: { x: '2020-03-01', text: 'COVID<br>Crash' },
+                fillcolor: 'rgba(239, 68, 68, 0.1)'
             },
-            // 2022 bear market
             {
-                type: 'rect',
                 x0: '2022-01-01',
                 x1: '2022-10-01',
-                y0: 0,
-                y1: 10,
-                fillcolor: 'rgba(245, 158, 11, 0.1)',
-                line: { width: 0 }
+                label: { x: '2022-06-01', text: '2022 Bear<br>Market' },
+                fillcolor: 'rgba(245, 158, 11, 0.1)'
             }
         ];
 
-        const annotations = [
-            { x: '2001-03-01', y: 9, text: 'Dot-Com<br>Crash', showarrow: false, font: { size: 10 } },
-            { x: '2008-06-01', y: 9, text: 'Financial<br>Crisis', showarrow: false, font: { size: 10 } },
-            { x: '2020-03-01', y: 9, text: 'COVID<br>Crash', showarrow: false, font: { size: 10 } },
-            { x: '2022-06-01', y: 9, text: '2022 Bear<br>Market', showarrow: false, font: { size: 10 } }
-        ];
+        // Filter crisis periods to only show those within visible date range
+        const startDate = new Date(dates[0]);
+        const endDate = new Date(dates[dates.length - 1]);
+
+        const visibleCrises = allCrisisPeriods.filter(crisis => {
+            const crisisStart = new Date(crisis.x0);
+            const crisisEnd = new Date(crisis.x1);
+            // Show if any part of the crisis overlaps with visible range
+            return crisisEnd >= startDate && crisisStart <= endDate;
+        });
+
+        // Build shapes and annotations only for visible crises
+        const shapes = visibleCrises.map(crisis => ({
+            type: 'rect',
+            x0: crisis.x0,
+            x1: crisis.x1,
+            y0: 0,
+            y1: 10,
+            fillcolor: crisis.fillcolor,
+            line: { width: 0 }
+        }));
+
+        const annotations = visibleCrises.map(crisis => ({
+            x: crisis.label.x,
+            y: 9,
+            text: crisis.label.text,
+            showarrow: false,
+            font: { size: 10 }
+        }));
 
         const layout = {
             height: 300,
