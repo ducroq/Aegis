@@ -16,8 +16,13 @@ Known crisis periods (20%+ drawdowns):
 
 import pandas as pd
 import numpy as np
+import logging
 from datetime import datetime
 from typing import Dict, List, Tuple
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Crisis periods (YYYY-MM format)
 CRISIS_PERIODS = [
@@ -321,6 +326,34 @@ def main():
     else:
         print(f"[WARN] Alert frequency too high ({alerts_per_year:.1f} alerts/year)")
 
+    print()
+
+    # Save option
+    print("="*80)
+    print("SAVE UPDATED SCORES TO DASHBOARD?")
+    print("="*80)
+    print()
+    print("This will overwrite data/history/risk_scores.csv with v0.2.0 results.")
+    print("The dashboard will then show updated 2022 YELLOW alerts.")
+    print()
+
+    # Always save in this context
+    logger.info("Saving updated scores to risk_scores.csv...")
+
+    # Prepare output dataframe
+    output_df = df[['date', 'new_overall_risk', 'recession', 'credit', 'valuation', 'liquidity', 'positioning', 'new_tier']].copy()
+    output_df = output_df.rename(columns={
+        'new_overall_risk': 'overall_risk',
+        'new_tier': 'tier'
+    })
+    output_df['alerted'] = output_df['tier'].isin(['YELLOW', 'RED'])
+
+    # Save to file
+    output_file = 'data/history/risk_scores.csv'
+    output_df.to_csv(output_file, index=False)
+
+    print(f"[SAVED] Updated {output_file}")
+    print(f"[SAVED] Dashboard will now show v0.2.0 results (2022 YELLOW alerts)")
     print()
 
 if __name__ == '__main__':
