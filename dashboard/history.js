@@ -6,6 +6,7 @@
 // Configuration with updated calibrated thresholds
 const CONFIG = {
     GITHUB_CSV_URL: 'https://raw.githubusercontent.com/ducroq/Aegis/master/data/history/risk_scores.csv',
+    RAW_INDICATORS_CSV_URL: 'https://raw.githubusercontent.com/ducroq/Aegis/master/data/history/raw_indicators.csv',
     RISK_THRESHOLDS: {
         RED: 5.0,      // Updated from 8.0
         YELLOW: 4.0    // Updated from 6.5
@@ -34,6 +35,7 @@ const CONFIG = {
 
 // Global state
 let fullData = [];
+let fullMarketData = [];
 let currentPeriod = 'all';
 
 // Data loading
@@ -57,6 +59,29 @@ const DataLoader = {
             return parsed.data;
         } catch (error) {
             console.error('Error loading data:', error);
+            throw error;
+        }
+    },
+
+    async loadMarketData() {
+        try {
+            const response = await fetch(CONFIG.RAW_INDICATORS_CSV_URL);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch market data: ${response.status}`);
+            }
+            const csvText = await response.text();
+            const parsed = Papa.parse(csvText, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true
+            });
+            if (parsed.data.length === 0) {
+                throw new Error('No market data found');
+            }
+            console.log('✓ Market data loaded:', parsed.data.length, 'points');
+            return parsed.data;
+        } catch (error) {
+            console.error('Error loading market data:', error);
             throw error;
         }
     }
@@ -460,6 +485,127 @@ const ChartRenderer = {
         Plotly.newPlot('correlationMatrix', [trace], layout, { responsive: true });
     },
 
+    createMarketVsRisk(riskData, marketData) {
+        // Match dates between risk and market data
+        const dates = riskData.map(d => d.date);
+        const riskScores = riskData.map(d => d.overall_risk);
+
+        // Get S&P 500 prices, filter to matching dates
+        const sp500Prices = [];
+        const sp500Drawdowns = [];
+
+        for (const riskPoint of riskData) {
+            const matchingMarket = marketData.find(m => m.date === riskPoint.date);
+            if (matchingMarket && matchingMarket.valuation_sp500_price) {
+                sp500Prices.push(matchingMarket.valuation_sp500_price);
+            } else {
+                sp500Prices.push(null);
+            }
+        }
+
+        // Calculate rolling drawdown (% decline from peak)
+        let peak = 0;
+        for (let i = 0; i < sp500Prices.length; i++) {
+            if (sp500Prices[i] !== null) {
+                if (sp500Prices[i] > peak) {
+                    peak = sp500Prices[i];
+                }
+                const drawdown = ((sp500Prices[i] - peak) / peak) * 100;
+                sp500Drawdowns.push(drawdown);
+            } else {
+                sp500Drawdowns.push(null);
+            }
+        }
+
+        // Trace 1: Risk Score (left y-axis)
+        const riskTrace = {
+            x: dates,
+            y: riskScores,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Risk Score',
+            line: { color: CONFIG.CHART_COLORS.PRIMARY, width: 2 },
+            yaxis: 'y1',
+            hovertemplate: '<b>%{x}</b><br>Risk: %{y:.2f}/10<extra></extra>'
+        };
+
+        // Trace 2: S&P 500 Drawdown (right y-axis, inverted)
+        const drawdownTrace = {
+            x: dates,
+            y: sp500Drawdowns,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'S&P 500 Drawdown',
+            line: { color: '#10b981', width: 2 },
+            fill: 'tozeroy',
+            fillcolor: 'rgba(16, 185, 129, 0.1)',
+            yaxis: 'y2',
+            hovertemplate: '<b>%{x}</b><br>Drawdown: %{y:.1f}%<extra></extra>'
+        };
+
+        // Add threshold lines for risk
+        const yellowLine = {
+            x: [dates[0], dates[dates.length - 1]],
+            y: [CONFIG.RISK_THRESHOLDS.YELLOW, CONFIG.RISK_THRESHOLDS.YELLOW],
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: CONFIG.CHART_COLORS.YELLOW, width: 1, dash: 'dash' },
+            name: 'YELLOW (4.0)',
+            yaxis: 'y1',
+            hoverinfo: 'skip',
+            showlegend: false
+        };
+
+        const redLine = {
+            x: [dates[0], dates[dates.length - 1]],
+            y: [CONFIG.RISK_THRESHOLDS.RED, CONFIG.RISK_THRESHOLDS.RED],
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: CONFIG.CHART_COLORS.RED, width: 1, dash: 'dash' },
+            name: 'RED (5.0)',
+            yaxis: 'y1',
+            hoverinfo: 'skip',
+            showlegend: false
+        };
+
+        const layout = {
+            height: 400,
+            margin: { t: 40, r: 80, b: 60, l: 60 },
+            xaxis: {
+                title: 'Date',
+                showgrid: true,
+                gridcolor: '#f0f0f0',
+                domain: [0, 1]
+            },
+            yaxis: {
+                title: 'Risk Score (0-10)',
+                titlefont: { color: CONFIG.CHART_COLORS.PRIMARY },
+                tickfont: { color: CONFIG.CHART_COLORS.PRIMARY },
+                range: [0, 10],
+                showgrid: true,
+                gridcolor: '#f0f0f0'
+            },
+            yaxis2: {
+                title: 'S&P 500 Drawdown (%)',
+                titlefont: { color: '#10b981' },
+                tickfont: { color: '#10b981' },
+                overlaying: 'y',
+                side: 'right',
+                range: [-60, 5],  // Inverted: deeper drawdowns at bottom
+                showgrid: false
+            },
+            legend: {
+                orientation: 'h',
+                y: 1.1,
+                x: 0.5,
+                xanchor: 'center'
+            },
+            hovermode: 'x unified'
+        };
+
+        Plotly.newPlot('marketVsRisk', [drawdownTrace, riskTrace, yellowLine, redLine], layout, { responsive: true });
+    },
+
     createEventsTimeline(data) {
         const dates = data.map(d => d.date);
         const scores = data.map(d => d.overall_risk);
@@ -567,8 +713,10 @@ const TimeSelector = {
 
     updateCharts() {
         const filteredData = TimeFilter.filterByPeriod(fullData, currentPeriod);
+        const filteredMarketData = TimeFilter.filterByPeriod(fullMarketData, currentPeriod);
 
         ChartRenderer.createRiskTimeline(filteredData);
+        ChartRenderer.createMarketVsRisk(filteredData, filteredMarketData);
         ChartRenderer.createDimensionTimeline(filteredData);
         ChartRenderer.createAlertHistory(filteredData);
         ChartRenderer.displayStatsTable(filteredData);
@@ -582,7 +730,10 @@ const HistoryApp = {
     async init() {
         try {
             UIUpdater.showLoading();
+
+            // Load both risk data and market data
             fullData = await DataLoader.loadData();
+            fullMarketData = await DataLoader.loadMarketData();
 
             UIUpdater.showCharts();
 
@@ -591,6 +742,7 @@ const HistoryApp = {
 
             // Render charts with full data
             ChartRenderer.createRiskTimeline(fullData);
+            ChartRenderer.createMarketVsRisk(fullData, fullMarketData);
             ChartRenderer.createDimensionTimeline(fullData);
             ChartRenderer.createAlertHistory(fullData);
             ChartRenderer.displayStatsTable(fullData);
