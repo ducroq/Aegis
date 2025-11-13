@@ -12,8 +12,8 @@
 const CONFIG = {
     GITHUB_CSV_URL: 'https://raw.githubusercontent.com/ducroq/Aegis/master/data/history/risk_scores.csv',
     RISK_THRESHOLDS: {
-        RED: 8.0,
-        YELLOW: 6.5
+        RED: 5.0,      // Updated from 8.0 (calibrated threshold based on 2000-2024 backtest)
+        YELLOW: 4.0    // Updated from 6.5 (calibrated threshold based on 2000-2024 backtest)
     },
     CHART_COLORS: {
         PRIMARY: '#667eea',
