@@ -8,6 +8,7 @@ config/credentials/secrets.ini
 # Data files (can be large, regenerate from APIs)
 data/history/
 !data/history/risk_scores.csv  # Exception: dashboard needs this CSV
+!data/history/raw_indicators.csv  # Exception: dashboard needs S&P 500 data
 data/cache/
 data/history_test/
 
