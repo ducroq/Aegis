@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overview - Aegis Risk Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">🛡️ Aegis</div>
+            <div class="nav-links">
+                <a href="overview.html" class="nav-link active">Overview</a>
+                <a href="history.html" class="nav-link">History</a>
+                <a href="dimensions.html" class="nav-link">Dimensions</a>
+                <a href="methodology.html" class="nav-link">Methodology</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>Current Risk Status</h1>
+            <p class="subtitle">Real-time snapshot of macro risk conditions</p>
+
+            <div class="status-bar" id="statusBar">
+                <div class="status-item">
+                    <div class="status-label">Current Risk Score</div>
+                    <div class="status-value" id="currentRisk">--</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Risk Tier</div>
+                    <div class="status-value" id="riskTier">--</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Trend (4 weeks)</div>
+                    <div class="status-value" id="trendIndicator" style="font-size: 1.5em;">--</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Last Updated</div>
+                    <div class="status-value" id="lastUpdated" style="font-size: 1.2em;">--</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="loading" id="loading">Loading current risk data...</div>
+        <div class="error" id="error" style="display: none;"></div>
+
+        <div id="charts" style="display: none;">
+            <!-- Alert Banner -->
+            <div id="alertBanner" style="display: none;" class="alert-banner">
+                <div class="alert-icon">⚠️</div>
+                <div class="alert-content">
+                    <div class="alert-title">Risk Alert Active</div>
+                    <div class="alert-message" id="alertMessage"></div>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <!-- Current Dimension Breakdown -->
+                <div class="chart-container">
+                    <div class="chart-title">Dimension Scores (Current)</div>
+                    <div id="dimensionRadar"></div>
+                </div>
+
+                <!-- Risk Gauge -->
+                <div class="chart-container">
+                    <div class="chart-title">Risk Gauge</div>
+                    <div id="riskGauge"></div>
+                </div>
+
+                <!-- Recent Trend (Last 30 days) -->
+                <div class="chart-container full-width">
+                    <div class="chart-title">Recent Trend (Last 30 Days)</div>
+                    <div id="recentTrend"></div>
+                </div>
+
+                <!-- Key Signals -->
+                <div class="chart-container full-width">
+                    <div class="chart-title">Active Warning Signals</div>
+                    <div id="keySignals" class="signals-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with <a href="https://github.com/ducroq/Aegis" target="_blank">Aegis</a> - Open source macro risk monitoring</p>
+        </footer>
+    </div>
+
+    <script src="overview.js"></script>
+</body>
+</html>

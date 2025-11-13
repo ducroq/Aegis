@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History - Aegis Risk Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">🛡️ Aegis</div>
+            <div class="nav-links">
+                <a href="overview.html" class="nav-link">Overview</a>
+                <a href="history.html" class="nav-link active">History</a>
+                <a href="dimensions.html" class="nav-link">Dimensions</a>
+                <a href="methodology.html" class="nav-link">Methodology</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>Historical Risk Analysis</h1>
+            <p class="subtitle">300 months of backtested macro risk data (2000-2024)</p>
+
+            <div class="time-selector">
+                <button class="time-btn active" data-period="all">All Time</button>
+                <button class="time-btn" data-period="5y">5 Years</button>
+                <button class="time-btn" data-period="3y">3 Years</button>
+                <button class="time-btn" data-period="1y">1 Year</button>
+                <button class="time-btn" data-period="ytd">YTD</button>
+            </div>
+        </header>
+
+        <div class="loading" id="loading">Loading historical data...</div>
+        <div class="error" id="error" style="display: none;"></div>
+
+        <div id="charts" style="display: none;">
+            <div class="chart-grid">
+                <!-- Overall Risk Score Over Time -->
+                <div class="chart-container full-width">
+                    <div class="chart-title">Overall Risk Score Over Time</div>
+                    <div class="chart-subtitle">Historical max: 5.55 (April 2020 COVID crash)</div>
+                    <div id="riskTimeline"></div>
+                </div>
+
+                <!-- Historical Dimensions -->
+                <div class="chart-container full-width">
+                    <div class="chart-title">Risk Dimensions Over Time</div>
+                    <div id="dimensionTimeline"></div>
+                </div>
+
+                <!-- Alert History -->
+                <div class="chart-container full-width">
+                    <div class="chart-title">Alert History</div>
+                    <div class="chart-subtitle">Track record: 2-5 alerts per year expected</div>
+                    <div id="alertHistory"></div>
+                </div>
+
+                <!-- Statistical Summary -->
+                <div class="chart-container">
+                    <div class="chart-title">Risk Statistics</div>
+                    <div id="statsTable"></div>
+                </div>
+
+                <!-- Correlation Matrix -->
+                <div class="chart-container">
+                    <div class="chart-title">Dimension Correlations</div>
+                    <div id="correlationMatrix"></div>
+                </div>
+
+                <!-- Historical Crises Overlay -->
+                <div class="chart-container full-width">
+                    <div class="chart-title">Major Market Events</div>
+                    <div id="eventsTimeline"></div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with <a href="https://github.com/ducroq/Aegis" target="_blank">Aegis</a> - Open source macro risk monitoring</p>
+        </footer>
+    </div>
+
+    <script src="history.js"></script>
+</body>
+</html>

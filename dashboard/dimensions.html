@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dimensions - Aegis Risk Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">🛡️ Aegis</div>
+            <div class="nav-links">
+                <a href="overview.html" class="nav-link">Overview</a>
+                <a href="history.html" class="nav-link">History</a>
+                <a href="dimensions.html" class="nav-link active">Dimensions</a>
+                <a href="methodology.html" class="nav-link">Methodology</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>Risk Dimension Breakdown</h1>
+            <p class="subtitle">Detailed analysis of each risk component</p>
+
+            <div class="dimension-tabs">
+                <button class="dim-tab active" data-dimension="all">All Dimensions</button>
+                <button class="dim-tab" data-dimension="recession">Recession (30%)</button>
+                <button class="dim-tab" data-dimension="credit">Credit (25%)</button>
+                <button class="dim-tab" data-dimension="valuation">Valuation (20%)</button>
+                <button class="dim-tab" data-dimension="liquidity">Liquidity (15%)</button>
+                <button class="dim-tab" data-dimension="positioning">Positioning (10%)</button>
+            </div>
+        </header>
+
+        <div class="loading" id="loading">Loading dimension data...</div>
+        <div class="error" id="error" style="display: none;"></div>
+
+        <div id="charts" style="display: none;">
+            <!-- All Dimensions View -->
+            <div id="allDimensions" class="dimension-view">
+                <div class="chart-grid">
+                    <div class="chart-container">
+                        <div class="chart-title">Current Dimension Scores</div>
+                        <div id="dimensionBars"></div>
+                    </div>
+
+                    <div class="chart-container">
+                        <div class="chart-title">Dimension Weights</div>
+                        <div id="weightsPie"></div>
+                    </div>
+
+                    <div class="chart-container full-width">
+                        <div class="chart-title">Historical Dimension Comparison</div>
+                        <div id="dimensionComparison"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Individual Dimension Views (shown when tab is selected) -->
+            <div id="recessionView" class="dimension-view" style="display: none;">
+                <div class="dimension-header">
+                    <h2>📉 Recession Risk (30% weight)</h2>
+                    <div class="dimension-score" id="recessionScore">--</div>
+                </div>
+                <div class="dimension-description">
+                    Monitors unemployment claims velocity, ISM PMI regime crosses, and dual yield curve inversions.
+                </div>
+                <div class="chart-grid">
+                    <div class="chart-container full-width">
+                        <div class="chart-title">Recession Score Over Time</div>
+                        <div id="recessionChart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Key Indicators</div>
+                        <div id="recessionIndicators"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Signals</div>
+                        <div id="recessionSignals" class="signals-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="creditView" class="dimension-view" style="display: none;">
+                <div class="dimension-header">
+                    <h2>💳 Credit Stress (25% weight)</h2>
+                    <div class="dimension-score" id="creditScore">--</div>
+                </div>
+                <div class="dimension-description">
+                    Tracks high-yield spread velocity (70%) and level (30%), investment-grade spreads, and bank lending standards.
+                </div>
+                <div class="chart-grid">
+                    <div class="chart-container full-width">
+                        <div class="chart-title">Credit Score Over Time</div>
+                        <div id="creditChart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Key Indicators</div>
+                        <div id="creditIndicators"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Signals</div>
+                        <div id="creditSignals" class="signals-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="valuationView" class="dimension-view" style="display: none;">
+                <div class="dimension-header">
+                    <h2>📊 Valuation Extremes (20% weight)</h2>
+                    <div class="dimension-score" id="valuationScore">--</div>
+                </div>
+                <div class="dimension-description">
+                    Monitors CAPE ratio, Buffett indicator (Market Cap/GDP), and forward P/E ratios.
+                </div>
+                <div class="chart-grid">
+                    <div class="chart-container full-width">
+                        <div class="chart-title">Valuation Score Over Time</div>
+                        <div id="valuationChart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Key Indicators</div>
+                        <div id="valuationIndicators"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Signals</div>
+                        <div id="valuationSignals" class="signals-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="liquidityView" class="dimension-view" style="display: none;">
+                <div class="dimension-header">
+                    <h2>💧 Liquidity Conditions (15% weight)</h2>
+                    <div class="dimension-score" id="liquidityScore">--</div>
+                </div>
+                <div class="dimension-description">
+                    Tracks Fed funds rate changes, M2 velocity, VIX levels, and dollar liquidity conditions.
+                </div>
+                <div class="chart-grid">
+                    <div class="chart-container full-width">
+                        <div class="chart-title">Liquidity Score Over Time</div>
+                        <div id="liquidityChart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Key Indicators</div>
+                        <div id="liquidityIndicators"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Signals</div>
+                        <div id="liquiditySignals" class="signals-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="positioningView" class="dimension-view" style="display: none;">
+                <div class="dimension-header">
+                    <h2>🎯 Positioning & Speculation (10% weight)</h2>
+                    <div class="dimension-score" id="positioningScore">--</div>
+                </div>
+                <div class="dimension-description">
+                    Monitors CFTC positioning (S&P 500, Treasury, VIX futures) for contrarian signals and complacency.
+                </div>
+                <div class="chart-grid">
+                    <div class="chart-container full-width">
+                        <div class="chart-title">Positioning Score Over Time</div>
+                        <div id="positioningChart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Key Indicators</div>
+                        <div id="positioningIndicators"></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-title">Signals</div>
+                        <div id="positioningSignals" class="signals-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Built with <a href="https://github.com/ducroq/Aegis" target="_blank">Aegis</a> - Open source macro risk monitoring</p>
+        </footer>
+    </div>
+
+    <script src="dimensions.js"></script>
+</body>
+</html>

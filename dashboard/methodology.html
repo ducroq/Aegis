@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Methodology - Aegis Risk Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">🛡️ Aegis</div>
+            <div class="nav-links">
+                <a href="overview.html" class="nav-link">Overview</a>
+                <a href="history.html" class="nav-link">History</a>
+                <a href="dimensions.html" class="nav-link">Dimensions</a>
+                <a href="methodology.html" class="nav-link active">Methodology</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>How Aegis Works</h1>
+            <p class="subtitle">Transparent, reproducible macro risk assessment</p>
+        </header>
+
+        <div class="methodology-content">
+            <section class="method-section">
+                <h2>🎯 Core Philosophy</h2>
+                <ul>
+                    <li><strong>Data > News:</strong> Use direct economic data, not news commentary</li>
+                    <li><strong>Rare alerts:</strong> High bar for notifications (2-5 per year expected)</li>
+                    <li><strong>Objective scoring:</strong> Clear formulas, reproducible calculations</li>
+                    <li><strong>Personal calibration:</strong> Tuned to preserve capital, not grow it</li>
+                </ul>
+            </section>
+
+            <section class="method-section">
+                <h2>📊 Risk Dimensions (5 total, weights sum to 1.0)</h2>
+
+                <div class="dimension-card">
+                    <h3>1. Recession Risk (30% weight)</h3>
+                    <p><strong>Key Indicators:</strong></p>
+                    <ul>
+                        <li>Unemployment claims <em>velocity</em> (YoY % change) - leading indicator</li>
+                        <li>ISM PMI regime cross detection (expansion → contraction)</li>
+                        <li>Dual yield curve (10Y-2Y + 3M→18M forward spread)</li>
+                    </ul>
+                    <p><strong>Philosophy:</strong> Rate of change > absolute values for leading signals</p>
+                </div>
+
+                <div class="dimension-card">
+                    <h3>2. Credit Stress (25% weight)</h3>
+                    <p><strong>Key Indicators:</strong></p>
+                    <ul>
+                        <li>High-yield spread <em>velocity</em> (70% weight) + level (30%)</li>
+                        <li>Investment-grade (BBB) spreads</li>
+                        <li>Bank lending standards survey</li>
+                        <li>TED spread (interbank stress)</li>
+                    </ul>
+                    <p><strong>Philosophy:</strong> Credit markets lead equities in crises</p>
+                </div>
+
+                <div class="dimension-card">
+                    <h3>3. Valuation Extremes (20% weight)</h3>
+                    <p><strong>Key Indicators:</strong></p>
+                    <ul>
+                        <li>CAPE ratio (Shiller P/E)</li>
+                        <li>Buffett indicator (Market Cap / GDP)</li>
+                        <li>Forward P/E ratio</li>
+                    </ul>
+                    <p><strong>Philosophy:</strong> Valuations don't cause crashes, but high valuations amplify them</p>
+                </div>
+
+                <div class="dimension-card">
+                    <h3>4. Liquidity Conditions (15% weight)</h3>
+                    <p><strong>Key Indicators:</strong></p>
+                    <ul>
+                        <li>Fed funds rate trajectory</li>
+                        <li>M2 money supply velocity</li>
+                        <li>VIX (implied volatility)</li>
+                        <li>Dollar liquidity proxies</li>
+                    </ul>
+                    <p><strong>Philosophy:</strong> "Don't fight the Fed" - liquidity drives markets</p>
+                </div>
+
+                <div class="dimension-card">
+                    <h3>5. Positioning & Speculation (10% weight)</h3>
+                    <p><strong>Key Indicators:</strong></p>
+                    <ul>
+                        <li>CFTC S&P 500 net speculative positioning (contrarian)</li>
+                        <li>CFTC Treasury positioning (squeeze risk)</li>
+                        <li>VIX futures positioning (complacency)</li>
+                    </ul>
+                    <p><strong>Philosophy:</strong> Extreme positioning creates vulnerability</p>
+                </div>
+            </section>
+
+            <section class="method-section">
+                <h2>🚦 Alert Tiers</h2>
+                <div class="alert-tiers">
+                    <div class="tier-card green">
+                        <h3>GREEN (0-3.9)</h3>
+                        <p>Normal conditions - stay the course</p>
+                    </div>
+                    <div class="tier-card yellow">
+                        <h3>YELLOW (4.0-4.9)</h3>
+                        <p>Elevated risk - review portfolio, build cash</p>
+                    </div>
+                    <div class="tier-card red">
+                        <h3>RED (5.0-10.0)</h3>
+                        <p>Severe risk - consider major defensive positioning</p>
+                    </div>
+                </div>
+
+                <p><strong>Alert Triggers:</strong></p>
+                <ul>
+                    <li>Risk ≥ 4.0 (YELLOW threshold)</li>
+                    <li>OR risk rising >1.0 point in 4 weeks</li>
+                    <li>OR 2+ dimensions ≥ 8.0 simultaneously</li>
+                </ul>
+            </section>
+
+            <section class="method-section">
+                <h2>📈 Historical Performance</h2>
+                <p><strong>Backtested: 300 months (2000-2024)</strong></p>
+                <ul>
+                    <li><strong>Historical Max:</strong> 5.55 (April 2020, COVID crash)</li>
+                    <li><strong>Major Crises Detected:</strong> 3 of 4 (2000-2002, 2008-2009, 2020)</li>
+                    <li><strong>False Positive Rate:</strong> 2.4% (19 alerts / 25 years)</li>
+                    <li><strong>Lead Time:</strong> 0-6 months (coincident indicator, not predictive)</li>
+                </ul>
+
+                <p><strong>System Limitations:</strong></p>
+                <ul>
+                    <li>Coincident, not leading - detects crises in progress, doesn't predict them</li>
+                    <li>Monthly sampling misses fast crashes (e.g., Feb-Mar 2020)</li>
+                    <li>Valuation warnings alone don't trigger alerts (2000 dot-com missed)</li>
+                </ul>
+            </section>
+
+            <section class="method-section">
+                <h2>🔍 Data Sources</h2>
+                <ul>
+                    <li><strong>FRED:</strong> Federal Reserve Economic Data (primary source)</li>
+                    <li><strong>Yahoo Finance:</strong> Market data, VIX, sector rotation</li>
+                    <li><strong>Shiller:</strong> CAPE ratio (monthly manual update)</li>
+                    <li><strong>CFTC:</strong> Commitments of Traders (positioning data)</li>
+                </ul>
+            </section>
+
+            <section class="method-section">
+                <h2>⚙️ Calculation Method</h2>
+                <ol>
+                    <li>Fetch latest data from all sources</li>
+                    <li>Calculate individual indicator scores (0-10 scale)</li>
+                    <li>Aggregate into 5 dimension scores (0-10 each)</li>
+                    <li>Apply dimension weights: weighted_sum = Σ(dimension_score × weight)</li>
+                    <li>Classify into tier: GREEN (<4.0), YELLOW (4.0-4.9), RED (≥5.0)</li>
+                    <li>Check alert triggers and notify if conditions met</li>
+                </ol>
+
+                <p><strong>Example Calculation:</strong></p>
+                <pre class="code-block">
+Recession:    3.5 × 0.30 = 1.05
+Credit:       6.0 × 0.25 = 1.50
+Valuation:    4.0 × 0.20 = 0.80
+Liquidity:    2.0 × 0.15 = 0.30
+Positioning:  1.0 × 0.10 = 0.10
+                           -----
+Overall Risk:              3.75 (GREEN, close to YELLOW)
+                </pre>
+            </section>
+
+            <section class="method-section">
+                <h2>📚 Learn More</h2>
+                <ul>
+                    <li><a href="https://github.com/ducroq/Aegis" target="_blank">GitHub Repository</a> - Full source code</li>
+                    <li><a href="https://github.com/ducroq/Aegis/blob/master/docs/METHODOLOGY_EVOLUTION.md" target="_blank">Methodology Evolution</a> - Timeline of changes</li>
+                    <li><a href="https://github.com/ducroq/Aegis/blob/master/docs/BACKTESTING_RESULTS.md" target="_blank">Backtesting Results</a> - Historical validation</li>
+                    <li><a href="https://github.com/ducroq/Aegis/blob/master/docs/INDICATORS_CATALOG.md" target="_blank">Indicators Catalog</a> - Complete reference</li>
+                </ul>
+            </section>
+        </div>
+
+        <footer>
+            <p>Built with <a href="https://github.com/ducroq/Aegis" target="_blank">Aegis</a> - Open source macro risk monitoring</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">
+                <strong>Disclaimer:</strong> Aegis is for educational purposes. Not financial advice. Past performance doesn't guarantee future results.
+            </p>
+        </footer>
+    </div>
+</body>
+</html>
