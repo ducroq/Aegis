@@ -5,7 +5,7 @@
 
 // Configuration with updated calibrated thresholds
 const CONFIG = {
-    GITHUB_CSV_URL: 'https://raw.githubusercontent.com/ducroq/Aegis/master/data/history/risk_scores.csv',
+    GITHUB_CSV_URL: 'https://raw.githubusercontent.com/ducroq/Aegis/master/data/history/risk_scores.csv?v=0.2.0',
     RISK_THRESHOLDS: {
         RED: 5.0,
         YELLOW: 4.0
