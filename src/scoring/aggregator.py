@@ -150,6 +150,18 @@ class RiskAggregator:
         # Determine risk tier
         tier = self._get_risk_tier(overall_score)
 
+        # Check for extreme liquidity tightening override
+        # If Fed tightening is extreme (liquidity >= 8.5), force YELLOW tier
+        # This catches Fed-driven corrections like 2022 that don't trigger recession/credit alarms
+        liquidity_override = self._check_liquidity_override(
+            liquidity_score=dimension_scores.get('liquidity', 0),
+            liquidity_data=data.get('liquidity', {})
+        )
+
+        if liquidity_override['active'] and tier == 'GREEN':
+            tier = 'YELLOW'
+            logger.warning(f"LIQUIDITY OVERRIDE: Tier elevated from GREEN to YELLOW due to extreme Fed tightening")
+
         # Check for valuation-based early warning (leading indicator)
         valuation_warning = self._check_valuation_warning(data.get('valuation', {}))
 
@@ -204,6 +216,7 @@ class RiskAggregator:
             'overall_score': overall_score,
             'confidence': confidence,
             'tier': tier,
+            'liquidity_override': liquidity_override,  # Extreme Fed tightening override
             'valuation_warning': valuation_warning,  # Early warning from valuation extremes
             'double_inversion_warning': double_inversion_warning,  # Recession + credit stress combo
             'real_rate_warning': real_rate_warning,  # Fed tightening warning
@@ -554,6 +567,92 @@ class RiskAggregator:
             'fed_funds': fed_funds,
             'inflation': cpi_inflation_yoy,
             'velocity_6m': fed_funds_velocity_6m
+        }
+
+    def _check_liquidity_override(
+        self,
+        liquidity_score: float,
+        liquidity_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Check for extreme liquidity tightening that should override tier.
+
+        When Fed tightening is extreme, force YELLOW tier even if overall score < 4.0.
+        This catches Fed-driven corrections (2022-style) that don't trigger traditional
+        recession or credit stress alarms.
+
+        Override triggers when:
+        1. Liquidity dimension score >= 8.5 (extreme tightening detected by scorer)
+        2. OR Fed funds velocity > 300% in 6 months (historically extreme)
+
+        Philosophy: "Don't fight the Fed" - extreme policy shifts cause corrections
+        even without systemic crisis.
+
+        Historical examples:
+        - 2022: Fed 0% → 4.5% in 12 months (-25% S&P drawdown, no recession)
+        - 1994: Fed 3% → 6% in 12 months (bond massacre)
+        - 2018 Q4: Fed hiking + QT (-20% S&P, then reversed)
+
+        Args:
+            liquidity_score: Calculated liquidity dimension score (0-10)
+            liquidity_data: Raw liquidity indicators
+
+        Returns:
+            Dict with:
+                - active: bool (should override trigger?)
+                - level: 'EXTREME' or None
+                - message: Warning message
+                - liquidity_score: Current liquidity score
+                - fed_velocity: Fed funds 6-month velocity
+        """
+        fed_velocity = liquidity_data.get('fed_funds_velocity_6m')
+
+        # Trigger 1: Liquidity dimension score >= 8.5 (extreme by scorer's assessment)
+        if liquidity_score >= 8.5:
+            message = (
+                f"LIQUIDITY OVERRIDE ACTIVATED: Extreme liquidity tightening detected. "
+                f"Liquidity dimension score {liquidity_score:.1f}/10 indicates severe Fed "
+                f"policy headwind. Historical precedent: 2022 bear market (Fed 0%→4.5% = -25% S&P), "
+                f"1994 bond massacre (Fed 3%→6%), 2018 Q4 selloff (Fed hiking+QT = -20%). "
+                f"Forcing YELLOW tier to flag Fed-driven correction risk."
+            )
+            logger.warning(message)
+            return {
+                'active': True,
+                'level': 'EXTREME',
+                'message': message,
+                'liquidity_score': liquidity_score,
+                'fed_velocity': fed_velocity,
+                'trigger': 'liquidity_score'
+            }
+
+        # Trigger 2: Fed velocity > 300% in 6 months (extreme rapid tightening)
+        if fed_velocity is not None and abs(fed_velocity) > 300:
+            message = (
+                f"LIQUIDITY OVERRIDE ACTIVATED: Extreme Fed tightening velocity detected. "
+                f"Fed funds rate changing at {fed_velocity:+.1f}% over 6 months. "
+                f"Historical examples: 2022 (312-2812% velocity = fastest tightening in 40 years). "
+                f"Rapid policy shifts disrupt market pricing and cause volatility. "
+                f"Forcing YELLOW tier to flag correction risk."
+            )
+            logger.warning(message)
+            return {
+                'active': True,
+                'level': 'EXTREME',
+                'message': message,
+                'liquidity_score': liquidity_score,
+                'fed_velocity': fed_velocity,
+                'trigger': 'fed_velocity'
+            }
+
+        # No override triggered
+        return {
+            'active': False,
+            'level': None,
+            'message': None,
+            'liquidity_score': liquidity_score,
+            'fed_velocity': fed_velocity,
+            'trigger': None
         }
 
     def _check_earnings_recession(

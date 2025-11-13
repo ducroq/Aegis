@@ -2,17 +2,18 @@
 
 app:
   name: "Aegis"
-  version: "0.1.0"
+  version: "0.2.0"
   description: "Real-Time Macro Defense System"
 
 # Risk scoring configuration
 scoring:
   # Dimension weights (must sum to 1.0)
+  # UPDATED 2025-01-13: Increased liquidity weight to catch Fed-driven corrections (2022-style)
   weights:
-    recession: 0.30
+    recession: 0.25    # Reduced from 0.30
     credit: 0.25
     valuation: 0.20
-    liquidity: 0.15
+    liquidity: 0.20    # Increased from 0.15 ("Don't fight the Fed")
     positioning: 0.10  # UPDATED: Changed from geopolitical to positioning (CFTC data)
 
   # Historical lookback for trend analysis (weeks)
