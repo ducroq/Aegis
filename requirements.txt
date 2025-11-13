@@ -1,0 +1,22 @@
+# Aegis - Portfolio Risk Management System
+# Python package dependencies
+
+# Core Data Sources
+fredapi>=0.5.0          # Federal Reserve Economic Data API
+yfinance>=0.2.40        # Yahoo Finance market data
+
+# Data Processing
+pandas>=2.0.0           # Data manipulation and analysis
+numpy>=1.24.0           # Numerical computing
+
+# Configuration & I/O
+PyYAML>=6.0             # YAML configuration files
+requests>=2.31.0        # HTTP library for data fetching
+
+# Testing
+pytest>=7.4.0           # Testing framework
+pytest-cov>=4.1.0       # Coverage reporting
+pytest-mock>=3.11.0     # Mocking for tests
+
+# Code Quality (optional but recommended for CI)
+bandit>=1.7.5           # Security vulnerability scanner
