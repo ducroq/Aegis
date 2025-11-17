@@ -6,9 +6,12 @@ config/credentials/secrets.ini
 *.pem
 
 # Data files (can be large, regenerate from APIs)
-data/history/
-!data/history/risk_scores.csv  # Exception: dashboard needs this CSV
-!data/history/raw_indicators.csv  # Exception: dashboard needs S&P 500 data
+# Note: We MUST track risk_scores.csv and raw_indicators.csv for the dashboard
+# So we ignore specific files instead of the whole directory
+data/history/*.json
+data/history/*.xlsx
+data/history/*.pkl
+data/history/*.parquet
 data/cache/
 data/history_test/
 
