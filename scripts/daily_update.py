@@ -141,20 +141,22 @@ def save_to_history(indicators: dict, risk_result: dict, dry_run: bool = False):
         # Write header if new file
         if not file_exists:
             writer.writerow([
-                'date', 'overall_risk', 'tier',
-                'recession', 'credit', 'valuation', 'liquidity', 'positioning'
+                'date', 'overall_risk',
+                'recession', 'credit', 'valuation', 'liquidity', 'positioning',
+                'tier', 'alerted'
             ])
 
         # Write data
         writer.writerow([
             timestamp,
             risk_result['overall_score'],
-            risk_result['tier'],
             risk_result['dimension_scores']['recession'],
             risk_result['dimension_scores']['credit'],
             risk_result['dimension_scores']['valuation'],
             risk_result['dimension_scores']['liquidity'],
-            risk_result['dimension_scores']['positioning']
+            risk_result['dimension_scores']['positioning'],
+            risk_result['tier'],
+            risk_result.get('alerted', False)  # Whether alert was triggered
         ])
 
     logger.info(f"  Saved risk scores to {scores_file}")
