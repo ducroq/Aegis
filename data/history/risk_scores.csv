@@ -299,3 +299,4 @@ date,overall_risk,recession,credit,valuation,liquidity,positioning,tier,alerted
 2024-10-01,1.4,2.0,0.0,2.5,2.0,0.0,GREEN,False
 2024-11-01,1.15,1.0,0.0,2.5,2.0,0.0,GREEN,False
 2024-12-01,1.8,2.0,0.0,2.5,3.0,2.0,GREEN,False
+2025-11-17,1.15,1.0,0.0,2.5,2.0,0.0,GREEN,False
