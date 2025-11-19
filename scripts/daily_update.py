@@ -171,8 +171,24 @@ def save_to_history(indicators: dict, risk_result: dict, dry_run: bool = False):
         for key, value in indicators[category].items():
             flat_indicators[f"{category}_{key}"] = value
 
+    # Add metadata fields
+    flat_indicators['metadata_fetch_timestamp'] = indicators['metadata']['fetch_timestamp']
+    flat_indicators['metadata_as_of_date'] = indicators['metadata'].get('as_of_date', timestamp)
+    flat_indicators['metadata_fetch_duration_seconds'] = indicators['metadata']['fetch_duration_seconds']
+
+    # Determine field names - read from existing file if it exists, otherwise use current order
+    if file_exists:
+        # Read existing header to maintain column order
+        with open(indicators_file, 'r', newline='') as f:
+            reader = csv.reader(f)
+            existing_header = next(reader)
+            fieldnames = existing_header
+    else:
+        # New file - define the canonical column order
+        fieldnames = ['date'] + list(flat_indicators.keys())
+
     with open(indicators_file, 'a', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['date'] + list(flat_indicators.keys()))
+        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction='ignore')
 
         # Write header if new file
         if not file_exists:

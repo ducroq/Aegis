@@ -205,8 +205,8 @@ const ChartRenderer = {
     },
 
     createRecentTrend(data) {
-        // Show last 12 months
-        const recentData = data.slice(-12);
+        // Show last 30 days (or all data if less than 30 rows)
+        const recentData = data.slice(-30);
         const dates = recentData.map(d => d.date);
         const scores = recentData.map(d => d.overall_risk);
 
