@@ -201,6 +201,16 @@ def save_to_history(indicators: dict, risk_result: dict, dry_run: bool = False):
 
     logger.info(f"  Saved raw indicators to {indicators_file}")
 
+    # Copy to dashboard folder for Netlify deployment
+    dashboard_dir = project_root / 'dashboard' / 'data'
+    dashboard_dir.mkdir(parents=True, exist_ok=True)
+
+    import shutil
+    shutil.copy2(scores_file, dashboard_dir / 'risk_scores.csv')
+    shutil.copy2(indicators_file, dashboard_dir / 'raw_indicators.csv')
+
+    logger.info(f"  Copied files to dashboard/data/ for Netlify")
+
 
 def main():
     """Main execution function."""
