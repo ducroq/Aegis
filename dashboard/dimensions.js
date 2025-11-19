@@ -5,7 +5,7 @@
 
 // Configuration with updated calibrated thresholds
 const CONFIG = {
-    GITHUB_CSV_URL: '/data/risk_scores.csv',
+    GITHUB_CSV_URL: '/data/historical_risk_scores.csv',
     RISK_THRESHOLDS: {
         RED: 5.0,
         YELLOW: 4.0
