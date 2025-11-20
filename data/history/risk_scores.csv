@@ -2,4 +2,3 @@ date,overall_risk,recession,credit,valuation,liquidity,positioning,tier,alerted
 2025-11-17,1.15,1.0,0.0,2.5,2.0,0.0,GREEN,False
 2025-11-18,1.35,1.0,0.0,2.5,3.0,0.0,GREEN,False
 2025-11-19,1.85,1.0,2.0,2.5,3.0,0.0,GREEN,False
-2025-11-19,1.85,1.0,2.0,2.5,3.0,0.0,GREEN,False
